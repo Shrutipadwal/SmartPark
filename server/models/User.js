@@ -5,9 +5,14 @@ const userSchema = new mongoose.Schema(
     firebaseUid: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true },
+    phone: { type: String, default: "", trim: true },
     photoURL: { type: String, default: "" },
     // Roles are controlled by the backend, never by a client request.
-    role: { type: String, enum: ["USER", "ADMIN"], default: "USER" },
+    role: {
+      type: String,
+      enum: ["USER", "ADMIN", "SUPER_ADMIN"],
+      default: "USER",
+    },
   },
   { timestamps: true },
 );

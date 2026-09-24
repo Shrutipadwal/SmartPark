@@ -15,6 +15,7 @@ import {
   getFirebaseAdminAuth,
   requireAdmin,
   requireFirebaseUser,
+  requireSuperAdmin,
 } from "./middleware/auth.js";
 import {
   sendBookingConfirmation,
@@ -23,6 +24,9 @@ import {
   sendOwnerNotification,
   sendWelcomeEmail,
   sendCustomEmail,
+  sendAdminBookingNotification,
+  sendBookingStatusEmail,
+  sendBookingReminderEmail,
 } from "./services/emailService.js";
 
 const app = express();
@@ -134,8 +138,11 @@ io.use(async (socket, next) => {
   try {
     const decoded = await firebaseAuth.verifyIdToken(token);
     const user = await User.findOne({ firebaseUid: decoded.uid }).lean();
-    if (user?.role !== "ADMIN") return next(new Error("Admin access required"));
+    if (!["ADMIN", "SUPER_ADMIN"].includes(user?.role)) {
+      return next(new Error("Admin access required"));
+    }
     socket.userId = user._id;
+    socket.role = user.role;
     return next();
   } catch {
     return next(new Error("Invalid authentication token"));
@@ -143,7 +150,7 @@ io.use(async (socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  socket.join("admins");
+  if (socket.role === "ADMIN") socket.join(`admin:${socket.userId}`);
 });
 
 // Temporary seed data keeps the API useful before MongoDB is configured.
@@ -215,6 +222,7 @@ function toParkingResponse(lot) {
     id: String(lot._id || lot.id),
     name: lot.name,
     address: lot.address,
+    contactPhone: lot.contactPhone || "",
     distance: lot.distance || 0,
     bikeAvailable: lot.bikeAvailable,
     bikeCapacity: lot.bikeCapacity,
@@ -229,47 +237,7 @@ function toParkingResponse(lot) {
 }
 
 async function seedDatabase() {
-  // A demo user gives seeded parking lots a valid owner before auth is connected.
-  demoUser = await User.findOne({ firebaseUid: "smartpark-demo-admin" });
-  if (!demoUser) {
-    demoUser = await User.create({
-      firebaseUid: "smartpark-demo-admin",
-      name: "SmartPark Demo Admin",
-      email: "demo-admin@smartpark.local",
-      role: "ADMIN",
-    });
-  }
-
-  for (const lot of parkingLots) {
-    const existingLot = await ParkingLot.findOne({
-      name: lot.name,
-      ownerId: demoUser._id,
-    });
-    if (!existingLot) {
-      await ParkingLot.create({
-        ownerId: demoUser._id,
-        name: lot.name,
-        address: lot.address,
-        distance: lot.distance,
-        latitude: lot.latitude,
-        longitude: lot.longitude,
-        bikeCapacity: lot.bikeCapacity,
-        carCapacity: lot.carCapacity,
-        bikeAvailable: lot.bikeAvailable,
-        carAvailable: lot.carAvailable,
-        bikePricePerHour: lot.bikePrice,
-        carPricePerHour: lot.carPrice,
-        parkingType: lot.parkingType,
-        openingTime: "08:00",
-        closingTime: "22:00",
-      });
-    } else if (existingLot.distance === 0 && lot.distance > 0) {
-      await ParkingLot.updateOne(
-        { _id: existingLot._id },
-        { $set: { distance: lot.distance } },
-      );
-    }
-  }
+  // No seeded users or admins are created here. Users are created only when they log in.
 }
 
 async function expireStaleBookings() {
@@ -292,6 +260,30 @@ async function expireStaleBookings() {
   }
 }
 
+async function sendUpcomingBookingReminders() {
+  if (!databaseEnabled) return;
+  const now = new Date();
+  const reminderWindow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const booking = await Booking.findOneAndUpdate(
+    {
+      bookingStatus: "CONFIRMED",
+      startTime: { $gt: now, $lte: reminderWindow },
+      reminderSentAt: null,
+    },
+    { $set: { reminderSentAt: now } },
+    { returnDocument: "after" },
+  )
+    .populate("userId", "name email")
+    .populate("parkingId", "name")
+    .lean();
+  if (!booking?.userId?.email || !booking.parkingId?.name) return;
+  await sendBookingReminderEmail(booking.userId.email, {
+    bookingId: booking.bookingId,
+    parkingLotName: booking.parkingId.name,
+    startTime: booking.startTime.toLocaleString(),
+  });
+}
+
 app.get("/", (_request, response) => {
   response.json({
     service: "smartpark-api",
@@ -311,6 +303,7 @@ app.get("/api/users/me", requireFirebaseUser, (request, response) => {
       id: request.dbUser._id,
       name: request.dbUser.name,
       email: request.dbUser.email,
+      phone: request.dbUser.phone || "",
       photoURL: request.dbUser.photoURL,
       role: request.dbUser.role,
     },
@@ -458,9 +451,35 @@ app.post(
         .status(409)
         .json({ message: "This booking is no longer awaiting payment." });
 
-    // Send payment receipt email in background (non-blocking)
     const user = await User.findById(request.dbUser._id).lean();
+    const parkingLot = await ParkingLot.findById(booking.parkingId).lean();
+    const owner = parkingLot
+      ? await User.findById(parkingLot.ownerId).lean()
+      : null;
+    const details = parkingLot
+      ? {
+          bookingId: booking.bookingId,
+          parkingLotName: parkingLot.name,
+          time: `${booking.startTime.toLocaleString()} - ${booking.endTime.toLocaleString()}`,
+          price: booking.amount,
+          customerName: user?.name || "Customer",
+          customerEmail: user?.email || "Unavailable",
+          customerPhone: user?.phone || "",
+          vehicleType: booking.vehicleType,
+          vehicleNumber: booking.vehicleNumber,
+        }
+      : null;
     if (user?.email) {
+      if (details) {
+        sendBookingConfirmation(user.email, {
+          ...details,
+          date: booking.startTime.toLocaleDateString(),
+          duration: `${Math.max(1, Math.round((booking.endTime - booking.startTime) / 3600000))} hours`,
+          qrCodeData: booking.qrCodeData,
+        }).catch((err) =>
+          console.error("❌ Error sending booking confirmation:", err.message),
+        );
+      }
       sendPaymentReceipt(user.email, {
         transactionId: paymentId,
         amount: booking.amount,
@@ -468,6 +487,14 @@ app.post(
         bookingId: booking.bookingId,
       }).catch((err) =>
         console.error("❌ Error sending payment receipt:", err.message),
+      );
+    }
+    if (owner?.email && details) {
+      sendAdminBookingNotification(owner.email, details).catch((err) =>
+        console.error(
+          "❌ Error sending admin booking notification:",
+          err.message,
+        ),
       );
     }
 
@@ -493,6 +520,7 @@ app.post(
     const {
       parkingName,
       address,
+      contactPhone = "",
       message = "",
       latitude = 18.5204,
       longitude = 73.8567,
@@ -501,10 +529,10 @@ app.post(
       bikePricePerHour = 15,
       carPricePerHour = 50,
     } = request.body;
-    if (!parkingName?.trim() || !address?.trim()) {
-      return response
-        .status(400)
-        .json({ message: "Parking name and address are required." });
+    if (!parkingName?.trim() || !address?.trim() || !contactPhone?.trim()) {
+      return response.status(400).json({
+        message: "Parking name, address, and contact phone are required.",
+      });
     }
     const capacities = [bikeCapacity, carCapacity].map(Number);
     const prices = [bikePricePerHour, carPricePerHour].map(Number);
@@ -528,6 +556,7 @@ app.post(
       requesterId: request.dbUser._id,
       parkingName,
       address,
+      contactPhone: contactPhone.trim(),
       message,
       latitude: Number(latitude),
       longitude: Number(longitude),
@@ -565,9 +594,33 @@ app.post(
 );
 
 app.get(
+  "/api/admin/members",
+  requireFirebaseUser,
+  requireSuperAdmin,
+  async (_request, response) => {
+    if (!databaseEnabled)
+      return response
+        .status(503)
+        .json({ message: "Database is not available." });
+    const members = await User.find({ role: { $in: ["ADMIN", "SUPER_ADMIN"] } })
+      .select("name email role createdAt")
+      .sort({ role: 1, createdAt: -1 })
+      .lean();
+    const data = await Promise.all(
+      members.map(async (member) => ({
+        ...member,
+        id: String(member._id),
+        parkingCount: await ParkingLot.countDocuments({ ownerId: member._id }),
+      })),
+    );
+    return response.json({ data });
+  },
+);
+
+app.get(
   "/api/admin/owner-requests",
   requireFirebaseUser,
-  requireAdmin,
+  requireSuperAdmin,
   async (_request, response) => {
     if (!databaseEnabled)
       return response
@@ -585,7 +638,7 @@ app.get(
 app.patch(
   "/api/admin/owner-requests/:id",
   requireFirebaseUser,
-  requireAdmin,
+  requireSuperAdmin,
   async (request, response) => {
     if (!databaseEnabled || !mongoose.isValidObjectId(request.params.id))
       return response
@@ -628,7 +681,6 @@ app.patch(
       });
     }
 
-    // Send decision email to requester
     const requester = await User.findById(ownerRequest.requesterId).lean();
     if (requester?.email) {
       const subject =
@@ -654,7 +706,6 @@ app.patch(
           </div>
         `;
 
-      // Send email but don't block response if it fails
       sendCustomEmail(requester.email, subject, html).catch((err) =>
         console.error("Error sending owner decision email:", err),
       );
@@ -668,20 +719,35 @@ app.get(
   "/api/admin/dashboard",
   requireFirebaseUser,
   requireAdmin,
-  async (_request, response) => {
+  async (request, response) => {
     if (!databaseEnabled)
       return response
         .status(503)
         .json({ message: "Database is not available." });
+    if (request.dbUser.role === "SUPER_ADMIN") {
+      return response.json({
+        data: {
+          totalParkingLots: 0,
+          totalBookings: 0,
+          activeBookings: 0,
+          availableBikeSlots: 0,
+          availableCarSlots: 0,
+        },
+      });
+    }
     await expireStaleBookings();
+    const ownedParkingIds = await ParkingLot.find({
+      ownerId: request.dbUser._id,
+    }).distinct("_id");
     const [parkingCount, bookingCount, activeCount, parking] =
       await Promise.all([
-        ParkingLot.countDocuments(),
-        Booking.countDocuments(),
+        ownedParkingIds.length,
+        Booking.countDocuments({ parkingId: { $in: ownedParkingIds } }),
         Booking.countDocuments({
+          parkingId: { $in: ownedParkingIds },
           bookingStatus: { $in: ["CONFIRMED", "CHECKED_IN"] },
         }),
-        ParkingLot.find()
+        ParkingLot.find({ _id: { $in: ownedParkingIds } })
           .select("name bikeAvailable carAvailable bikeCapacity carCapacity")
           .lean(),
       ]);
@@ -723,14 +789,19 @@ app.get(
   "/api/admin/bookings",
   requireFirebaseUser,
   requireAdmin,
-  async (_request, response) => {
+  async (request, response) => {
     if (!databaseEnabled)
       return response
         .status(503)
         .json({ message: "Database is not available." });
-    const bookings = await Booking.find()
-      .populate("userId", "name email photoURL role")
-      .populate("parkingId", "name address")
+    if (request.dbUser.role === "SUPER_ADMIN")
+      return response.json({ data: [] });
+    const ownedParkingIds = await ParkingLot.find({
+      ownerId: request.dbUser._id,
+    }).distinct("_id");
+    const bookings = await Booking.find({ parkingId: { $in: ownedParkingIds } })
+      .populate("userId", "name email phone photoURL role")
+      .populate("parkingId", "name address contactPhone")
       .sort({ createdAt: -1 })
       .lean();
     response.json({ data: bookings });
@@ -749,6 +820,7 @@ app.post(
     const {
       name,
       address,
+      contactPhone = "",
       latitude,
       longitude,
       bikeCapacity,
@@ -765,18 +837,20 @@ app.post(
     if (
       !name ||
       !address ||
+      !contactPhone.trim() ||
       capacities.some((value) => !Number.isInteger(value) || value < 1) ||
       prices.some((value) => !Number.isFinite(value) || value < 0)
     ) {
       return response.status(400).json({
         message:
-          "Name, address, positive capacities, and valid prices are required.",
+          "Name, address, contact phone, positive capacities, and valid prices are required.",
       });
     }
     const parking = await ParkingLot.create({
       ownerId: request.dbUser._id,
       name,
       address,
+      contactPhone: contactPhone.trim(),
       description,
       latitude: Number(latitude),
       longitude: Number(longitude),
@@ -808,6 +882,7 @@ app.put(
       "name",
       "description",
       "address",
+      "contactPhone",
       "latitude",
       "longitude",
       "bikeCapacity",
@@ -827,6 +902,8 @@ app.put(
       updates.latitude = Number(updates.latitude);
     if (updates.longitude !== undefined)
       updates.longitude = Number(updates.longitude);
+    if (updates.contactPhone !== undefined)
+      updates.contactPhone = String(updates.contactPhone).trim();
     if (updates.bikeCapacity !== undefined)
       updates.bikeCapacity = Number(updates.bikeCapacity);
     if (updates.carCapacity !== undefined)
@@ -1008,9 +1085,20 @@ app.post("/api/bookings", requireFirebaseUser, async (request, response) => {
     parkingId,
     vehicleType = "car",
     vehicleNumber = "",
+    phone = "",
     startTime: requestedStartTime,
     durationHours = 2,
   } = request.body;
+
+  if (!String(phone).trim()) {
+    return response
+      .status(400)
+      .json({ message: "A contact phone number is required." });
+  }
+  await User.updateOne(
+    { _id: request.dbUser._id },
+    { $set: { phone: String(phone).trim() } },
+  );
 
   if (databaseEnabled) {
     if (
@@ -1087,31 +1175,16 @@ app.post("/api/bookings", requireFirebaseUser, async (request, response) => {
           message: "Sorry, this parking became unavailable for that time.",
         });
 
-      // Send booking confirmation email in background (non-blocking)
-      const user = await User.findById(request.dbUser._id).lean();
-      const parkingLot = await ParkingLot.findById(parkingId).lean();
-      if (user?.email && parkingLot) {
-        const duration = `${Number(durationHours)} hour${Number(durationHours) > 1 ? "s" : ""}`;
-        const startTimeStr = startTime.toLocaleString();
-        const endTimeStr = endTime.toLocaleString();
-
-        sendBookingConfirmation(user.email, {
-          bookingId: booking.bookingId,
-          parkingLotName: parkingLot.name,
-          date: startTime.toLocaleDateString(),
-          time: `${startTimeStr} - ${endTimeStr}`,
-          duration,
-          price: booking.amount,
-        }).catch((err) =>
-          console.error("❌ Error sending booking confirmation:", err.message),
+      const notification = await Booking.findById(booking._id)
+        .populate("userId", "name email phone photoURL")
+        .populate("parkingId", "name address contactPhone ownerId")
+        .lean();
+      if (notification?.parkingId?.ownerId) {
+        io.to(`admin:${notification.parkingId.ownerId}`).emit(
+          "reservation-created",
+          notification,
         );
       }
-
-      const notification = await Booking.findById(booking._id)
-        .populate("userId", "name email photoURL")
-        .populate("parkingId", "name address")
-        .lean();
-      io.to("admins").emit("reservation-created", notification);
       return response.status(201).json({
         data: {
           bookingId: booking.bookingId,
@@ -1190,6 +1263,19 @@ app.post("/api/checkin", requireFirebaseUser, async (request, response) => {
     booking.bookingStatus = "CHECKED_IN";
     booking.checkedInAt = new Date();
     await booking.save();
+    const checkInUser = await User.findById(request.dbUser._id).lean();
+    const checkInParking = await ParkingLot.findById(booking.parkingId)
+      .select("name")
+      .lean();
+    if (checkInUser?.email && checkInParking) {
+      sendBookingStatusEmail(checkInUser.email, {
+        bookingId: booking.bookingId,
+        parkingLotName: checkInParking.name,
+        status: "CHECKED IN",
+      }).catch((err) =>
+        console.error("❌ Error sending check-in email:", err.message),
+      );
+    }
 
     return response.json({
       data: {
@@ -1242,6 +1328,19 @@ app.post("/api/checkout", requireFirebaseUser, async (request, response) => {
     booking.bookingStatus = "COMPLETED";
     booking.checkedOutAt = new Date();
     await booking.save();
+    const checkOutUser = await User.findById(request.dbUser._id).lean();
+    const checkOutParking = await ParkingLot.findById(booking.parkingId)
+      .select("name")
+      .lean();
+    if (checkOutUser?.email && checkOutParking) {
+      sendBookingStatusEmail(checkOutUser.email, {
+        bookingId: booking.bookingId,
+        parkingLotName: checkOutParking.name,
+        status: "COMPLETED",
+      }).catch((err) =>
+        console.error("❌ Error sending check-out email:", err.message),
+      );
+    }
 
     // Return the parking space
     await ParkingLot.findByIdAndUpdate(booking.parkingId, {
@@ -1275,6 +1374,16 @@ app.use((_request, response) => {
 async function startServer() {
   databaseEnabled = await connectDatabase();
   if (databaseEnabled) await seedDatabase();
+  if (databaseEnabled) {
+    setInterval(
+      () => {
+        sendUpcomingBookingReminders().catch((error) =>
+          console.error("Error sending booking reminder:", error.message),
+        );
+      },
+      60 * 60 * 1000,
+    );
+  }
   httpServer.listen(port, () => {
     console.log(`SmartPark API listening on http://localhost:${port}`);
   });

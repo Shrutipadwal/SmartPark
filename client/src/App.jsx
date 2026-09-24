@@ -12,6 +12,7 @@ import {
   MapPin,
   Menu,
   Navigation,
+  Phone,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -84,6 +85,21 @@ function getStatus(available, capacity) {
   return { label: "Available", tone: "available" };
 }
 
+function isAdminRole(role) {
+  const normalizedRole = String(role || "")
+    .trim()
+    .toUpperCase();
+  return normalizedRole === "ADMIN" || normalizedRole === "SUPER_ADMIN";
+}
+
+function isSuperAdminRole(role) {
+  return (
+    String(role || "")
+      .trim()
+      .toUpperCase() === "SUPER_ADMIN"
+  );
+}
+
 function formatBookingDate(value) {
   return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
     day: "numeric",
@@ -105,9 +121,10 @@ function formatBookingDateTime(value) {
 function SmartParkApp() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isHomePage = ["/", "/find", "/how-it-works", "/about"].includes(
+  const isHomePage = ["/", "/find", "/how-it-works"].includes(
     location.pathname,
   );
+  const isAboutPage = location.pathname === "/about";
   const isPartnerPage = location.pathname === "/partner";
   const isDashboardPage = location.pathname === "/dashboard";
   const isCheckInPage = location.pathname === "/checkin";
@@ -143,6 +160,7 @@ function SmartParkApp() {
   const [bookingStart, setBookingStart] = useState("10:00");
   const [bookingDuration, setBookingDuration] = useState(2);
   const [vehicleNumber, setVehicleNumber] = useState("");
+  const [phone, setPhone] = useState("");
   const [paymentBooking, setPaymentBooking] = useState(null);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
@@ -163,14 +181,19 @@ function SmartParkApp() {
         const userProfile = await fetchMyProfile(token);
         if (!active) return;
         setProfile(userProfile);
-        setMyBookings(await fetchMyBookings(token));
-        if (userProfile.role === "ADMIN") {
+        if (isAdminRole(userProfile.role)) {
+          navigate("/dashboard");
           setAdminStats(await fetchAdminDashboard(token));
           setAdminParking(await fetchAdminParking(token));
           const bookings = await fetchAdminBookings(token);
           setAdminBookings(bookings);
-          setOwnerRequests(await fetchOwnerRequests(token));
+          if (isSuperAdminRole(userProfile.role)) {
+            setOwnerRequests(await fetchOwnerRequests(token));
+          } else {
+            setOwnerRequests([]);
+          }
         }
+        setMyBookings(await fetchMyBookings(token));
       } catch (error) {
         if (active)
           setAuthMessage(error.response?.data?.message || error.message);
@@ -180,10 +203,10 @@ function SmartParkApp() {
     return () => {
       active = false;
     };
-  }, [authUser]);
+  }, [authUser, navigate]);
 
   useEffect(() => {
-    if (!authUser || profile?.role !== "ADMIN") return undefined;
+    if (!authUser || !isAdminRole(profile?.role)) return undefined;
     let socket;
     let active = true;
     getCurrentUserToken(authUser).then((token) => {
@@ -206,9 +229,20 @@ function SmartParkApp() {
   useEffect(() => {
     if (!partnerLoginIntent || !authUser || !profile) return;
     setPartnerLoginIntent(false);
-    if (profile.role === "ADMIN") navigate("/dashboard");
+    if (isAdminRole(profile.role)) navigate("/dashboard");
     else setPartnerFormOpen(true);
   }, [authUser, partnerLoginIntent, profile, navigate]);
+
+  useEffect(() => {
+    if (!location.hash) return;
+    const elementId = location.hash.replace("#", "");
+    const target = document.getElementById(elementId);
+    if (target) {
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [location.hash, location.pathname]);
 
   useEffect(() => {
     // The local seed keeps the UI usable when the API is not running yet.
@@ -243,6 +277,7 @@ function SmartParkApp() {
         parkingId: selectedLot.id,
         vehicleType: vehicle,
         vehicleNumber,
+        phone,
         startTime: `${bookingDate}T${bookingStart}:00`,
         durationHours: Number(bookingDuration),
         token,
@@ -295,6 +330,7 @@ function SmartParkApp() {
     setSelectedLot(lot);
     setBookingComplete(false);
     setVehicleNumber("");
+    setPhone("");
   }
 
   function useMyLocation() {
@@ -351,7 +387,7 @@ function SmartParkApp() {
       setLoginModalOpen(true);
       return;
     }
-    if (profile?.role === "ADMIN") openDashboard();
+    if (isAdminRole(profile?.role)) openDashboard();
     else setPartnerFormOpen(true);
   }
 
@@ -464,18 +500,26 @@ function SmartParkApp() {
           <Menu size={22} />
         </button>
         <nav className={mobileMenuOpen ? "nav-links open" : "nav-links"}>
-          <Link to="/find">Find parking</Link>
-          <Link to="/checkin">Check-in</Link>
-          <Link to="/how-it-works">How it works</Link>
-          <Link to="/about">About</Link>
+          <Link to="/#find" onClick={() => setMobileMenuOpen(false)}>
+            Find parking
+          </Link>
+          <Link to="/checkin" onClick={() => setMobileMenuOpen(false)}>
+            Check-in
+          </Link>
+          <Link to="/#how-it-works" onClick={() => setMobileMenuOpen(false)}>
+            How it works
+          </Link>
+          <Link to="/about" onClick={() => setMobileMenuOpen(false)}>
+            About
+          </Link>
           {authMessage && <span className="auth-message">{authMessage}</span>}
           {authUser ? (
             <>
               <button
-                className={`nav-tab ${profile?.role === "ADMIN" ? "admin-tab" : ""}`}
+                className={`nav-tab ${isAdminRole(profile?.role) ? "admin-tab" : ""}`}
                 onClick={openDashboard}
               >
-                {profile?.role === "ADMIN" ? "Admin panel" : "My bookings"}{" "}
+                {isAdminRole(profile?.role) ? "Admin panel" : "My bookings"}{" "}
                 <ArrowRight size={16} />
               </button>
               <button className="sign-in" onClick={signOutUser}>
@@ -491,10 +535,12 @@ function SmartParkApp() {
       </header>
       <main id="top">
         {!isHomePage &&
+          !isAboutPage &&
           !isPartnerPage &&
           !isDashboardPage &&
           !isCheckInPage &&
           !bookingMatch && <NotFoundPage />}
+        {isAboutPage && <AboutPage />}
         {isCheckInPage && (
           <CheckInPage
             bookings={myBookings}
@@ -853,6 +899,16 @@ function SmartParkApp() {
                       }
                     />
                   </label>
+                  <label>
+                    Contact phone
+                    <input
+                      required
+                      type="tel"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      placeholder="Example: +91 9876543210"
+                    />
+                  </label>
                   <div className="booking-field-row">
                     <label>
                       Date
@@ -989,6 +1045,222 @@ function SmartParkApp() {
   );
 }
 
+function AboutPage() {
+  return (
+    <section className="about-page-shell">
+      <div className="about-hero">
+        <div className="about-copy">
+          <p className="eyebrow">
+            <MapPin size={14} /> SmartPark story
+          </p>
+          <h1>
+            Parking should feel <em>easy</em>, not stressful.
+          </h1>
+          <p className="about-intro">
+            SmartPark is built for drivers who want a faster, more reliable way
+            to find parking before they arrive. Instead of circling blocks or
+            wasting time at the last minute, drivers can discover nearby spaces,
+            compare prices, reserve a slot, and get confirmation in minutes.
+          </p>
+          <div className="hero-actions">
+            <Link className="primary-button" to="/#find">
+              Find parking <ArrowRight size={17} />
+            </Link>
+            <Link className="text-button" to="/partner">
+              Partner with us <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="about-section">
+        <div className="about-heading">
+          <p className="eyebrow">Why SmartPark helps</p>
+          <h2>
+            Less time searching.
+            <br />
+            More time moving.
+          </h2>
+        </div>
+        <div className="feature-grid">
+          <div className="feature-card">
+            <span className="feature-icon">
+              <Search size={18} />
+            </span>
+            <h3>Find nearby parking fast</h3>
+            <p>
+              Search by area, compare nearby lots, and filter by vehicle type,
+              distance, and price before you leave home.
+            </p>
+          </div>
+          <div className="feature-card">
+            <span className="feature-icon">
+              <ShieldCheck size={18} />
+            </span>
+            <h3>Book with confidence</h3>
+            <p>
+              Reserve your slot in advance, choose your time, and avoid the
+              stress of arriving and discovering there is no space left.
+            </p>
+          </div>
+          <div className="feature-card">
+            <span className="feature-icon">
+              <Check size={18} />
+            </span>
+            <h3>Know your booking is confirmed</h3>
+            <p>
+              Once payment is successful, the system creates a confirmation and
+              a QR code that can be used during check-in.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="about-section alt">
+        <div className="about-heading">
+          <p className="eyebrow">How the process works</p>
+          <h2>From search to check-in</h2>
+        </div>
+        <div className="process-grid">
+          <div className="process-step">
+            <span>01</span>
+            <div>
+              <h3>Search your destination</h3>
+              <p>
+                Drivers enter a destination or use their current location to see
+                nearby parking lots, availability, and estimated travel time.
+              </p>
+            </div>
+          </div>
+          <div className="process-step">
+            <span>02</span>
+            <div>
+              <h3>Compare availability and pricing</h3>
+              <p>
+                SmartPark shows active space counts, pricing, and distance so
+                you can quickly choose a lot that fits your needs.
+              </p>
+            </div>
+          </div>
+          <div className="process-step">
+            <span>03</span>
+            <div>
+              <h3>Reserve your spot</h3>
+              <p>
+                Select your vehicle type, date, time, and duration, then proceed
+                to secure the booking with a simple payment flow.
+              </p>
+            </div>
+          </div>
+          <div className="process-step">
+            <span>04</span>
+            <div>
+              <h3>Get confirmation and QR code</h3>
+              <p>
+                After payment is verified, the booking is confirmed and the user
+                receives a booking ID and QR code for a seamless arrival
+                process.
+              </p>
+            </div>
+          </div>
+          <div className="process-step">
+            <span>05</span>
+            <div>
+              <h3>Check in on arrival</h3>
+              <p>
+                At the parking lot, the driver scans the QR or enters the
+                booking ID to check in, then checks out when leaving.
+              </p>
+            </div>
+          </div>
+          <div className="process-step">
+            <span>06</span>
+            <div>
+              <h3>Space is released automatically</h3>
+              <p>
+                Checking out releases the space so it becomes available again
+                for other drivers in real time.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="about-section">
+        <div className="about-heading">
+          <p className="eyebrow">Booking and confirmation</p>
+          <h2>What happens after you book</h2>
+        </div>
+        <div className="info-panel">
+          <div>
+            <h3>Your reservation is created</h3>
+            <p>
+              The system records your parking lot, time, vehicle details and
+              booking reference. This makes your slot traceable and easier to
+              manage later.
+            </p>
+          </div>
+          <div>
+            <h3>Payment is verified securely</h3>
+            <p>
+              SmartPark confirms the booking through payment verification and
+              generates the confirmation details for the driver.
+            </p>
+          </div>
+          <div>
+            <h3>Check-in is simple and fast</h3>
+            <p>
+              Drivers can use a QR scan or booking ID to complete check-in,
+              which reduces queue time and gives parking staff a clean process.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="about-section alt">
+        <div className="about-heading">
+          <p className="eyebrow">Partner with us</p>
+          <h2>Turn empty space into a steady income stream</h2>
+        </div>
+        <div className="partner-grid">
+          <div className="partner-card">
+            <h3>List your parking</h3>
+            <p>
+              If you own a lot, shop frontage, apartment space, or dedicated
+              parking area, SmartPark helps you list it for drivers looking for
+              a dependable place to park.
+            </p>
+          </div>
+          <div className="partner-card">
+            <h3>Stay in control</h3>
+            <p>
+              You can update capacity, set rates, and manage bookings from a
+              streamlined dashboard without manual confusion or scattered tools.
+            </p>
+          </div>
+          <div className="partner-card">
+            <h3>Build trust with drivers</h3>
+            <p>
+              Drivers know exactly where they can park, when it is available,
+              and how to confirm their booking before they even leave home.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="about-cta">
+        <div>
+          <p className="eyebrow">Ready to park smarter?</p>
+          <h2>Start your next trip with less stress.</h2>
+        </div>
+        <Link className="primary-button" to="/#find">
+          Book a spot <ArrowRight size={17} />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function PaymentStep({ booking, authUser, onPaid }) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -1055,6 +1327,11 @@ function ParkingCard({ lot, vehicle, onBook }) {
         </div>
         <h3>{lot.name}</h3>
         <p className="address">{lot.address}</p>
+        {lot.contactPhone && (
+          <a className="parking-contact" href={`tel:${lot.contactPhone}`}>
+            <Phone size={12} /> {lot.contactPhone}
+          </a>
+        )}
         <div className="card-meta">
           <span>
             <strong>{available}</strong> {vehicle === "car" ? "car" : "bike"}{" "}
@@ -1080,7 +1357,7 @@ function ParkingCard({ lot, vehicle, onBook }) {
 function PartnerPage({ authUser, profile, onBack, onContinue }) {
   const actionLabel = !authUser
     ? "Sign in to get started"
-    : profile?.role === "ADMIN"
+    : isAdminRole(profile?.role)
       ? "Open owner setup"
       : "Apply to become a partner";
   return (
@@ -1158,7 +1435,8 @@ function AccountDashboard({
   selectedBookingDetail,
   onSelectBookingDetail,
 }) {
-  const isAdmin = profile?.role === "ADMIN";
+  const isAdmin = isAdminRole(profile?.role);
+  const isSuperAdmin = isSuperAdminRole(profile?.role);
   const pendingRequestsCount = ownerRequests.filter(
     (item) => item.status === "PENDING",
   ).length;
@@ -1191,127 +1469,155 @@ function AccountDashboard({
       </div>
       {isAdmin && adminStats ? (
         <>
-          {adminNotice && (
-            <p className="dashboard-message" role="status">
-              {adminNotice}
-            </p>
+          {isSuperAdmin && (
+            <div className="admin-overview-card">
+              <div className="admin-overview-header">
+                <div>
+                  <p className="eyebrow">Administration</p>
+                  <h3>Super-admin controls</h3>
+                  <p className="dashboard-empty">
+                    Review parking-owner requests and approve new admin
+                    accounts.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
+          {!isSuperAdmin && (
+            <>
+              {adminNotice && (
+                <p className="dashboard-message" role="status">
+                  {adminNotice}
+                </p>
+              )}
 
-          <div className="admin-overview-card">
-            <div className="admin-overview-header">
-              <div>
-                <p className="eyebrow">Overview</p>
-                <h3>Operations summary</h3>
-              </div>
-              <div className="admin-quick-actions">
-                <button className="small-action" onClick={() => onAdd()}>
-                  + Add parking
-                </button>
-                <button
-                  className="small-action"
-                  onClick={() =>
-                    window.scrollTo({ top: 0, behavior: "smooth" })
-                  }
-                >
-                  Pending requests ({pendingRequestsCount})
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="dashboard-stats">
-            <DashboardStat
-              label="Parking lots"
-              value={adminStats.totalParkingLots}
-            />
-            <DashboardStat
-              label="Total bookings"
-              value={adminStats.totalBookings}
-            />
-            <DashboardStat
-              label="Active bookings"
-              value={adminStats.activeBookings}
-            />
-            <DashboardStat
-              label="Pending requests"
-              value={pendingRequestsCount}
-            />
-          </div>
-
-          <div className="dashboard-list">
-            <div className="dashboard-list-header">
-              <strong>Managed parking</strong>
-              <button className="small-action" onClick={() => onAdd()}>
-                + Add parking
-              </button>
-            </div>
-            {message && <p className="dashboard-message">{message}</p>}
-            {adminParking.map((lot) => (
-              <AdminParkingRow
-                key={lot.id}
-                lot={lot}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onAvailability={onAvailability}
-              />
-            ))}
-          </div>
-
-          <div className="dashboard-list">
-            <div className="dashboard-list-header">
-              <strong>Recent bookings</strong>
-              <span>{adminBookings.length} bookings</span>
-            </div>
-            {adminBookings.length ? (
-              adminBookings.map((booking) => (
-                <div
-                  className="dashboard-row customer-booking-row"
-                  key={booking._id || booking.bookingId}
-                >
-                  <div className="customer-booking-details">
-                    <strong>{booking.userId?.name || "User"}</strong>
-                    <small>
-                      {booking.userId?.email || "Email unavailable"}
-                    </small>
-                    <small>{booking.bookingId || "Reservation"}</small>
-                    <span
-                      className={`status-pill ${getBookingStatusClass(booking.bookingStatus)}`}
-                    >
-                      {booking.bookingStatus}
-                    </span>
+              <div className="admin-overview-card">
+                <div className="admin-overview-header">
+                  <div>
+                    <p className="eyebrow">Overview</p>
+                    <h3>Operations summary</h3>
                   </div>
-                  <div className="customer-booking-meta">
-                    <span>
-                      {booking.parkingId?.name || "Parking reservation"}
-                    </span>
-                    <span>
-                      {booking.vehicleType} · {booking.vehicleNumber || "N/A"}
-                    </span>
-                    <span>
-                      {formatBookingDateTime(booking.startTime)} to{" "}
-                      {formatBookingDateTime(booking.endTime)}
-                    </span>
-                    <div className="booking-time-stack">
-                      {booking.checkedInAt && (
-                        <span className="time-tag">
-                          Check-in: {formatBookingDateTime(booking.checkedInAt)}
-                        </span>
-                      )}
-                      {booking.checkedOutAt && (
-                        <span className="time-tag">
-                          Check-out:{" "}
-                          {formatBookingDateTime(booking.checkedOutAt)}
-                        </span>
-                      )}
-                    </div>
-                    <strong>₹{booking.amount}</strong>
+                  <div className="admin-quick-actions">
+                    <button className="small-action" onClick={() => onAdd()}>
+                      + Add parking
+                    </button>
+                    <button
+                      className="small-action"
+                      onClick={() =>
+                        window.scrollTo({ top: 0, behavior: "smooth" })
+                      }
+                    >
+                      Pending requests ({pendingRequestsCount})
+                    </button>
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="dashboard-empty">No bookings yet.</p>
-            )}
-          </div>
+              </div>
+
+              <div className="dashboard-stats">
+                <DashboardStat
+                  label="Parking lots"
+                  value={adminStats.totalParkingLots}
+                />
+                <DashboardStat
+                  label="Total bookings"
+                  value={adminStats.totalBookings}
+                />
+                <DashboardStat
+                  label="Active bookings"
+                  value={adminStats.activeBookings}
+                />
+                <DashboardStat
+                  label="Pending requests"
+                  value={pendingRequestsCount}
+                />
+              </div>
+
+              <div className="dashboard-list">
+                <div className="dashboard-list-header">
+                  <strong>Managed parking</strong>
+                  <button className="small-action" onClick={() => onAdd()}>
+                    + Add parking
+                  </button>
+                </div>
+                {message && <p className="dashboard-message">{message}</p>}
+                {adminParking.map((lot) => (
+                  <AdminParkingRow
+                    key={lot.id}
+                    lot={lot}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onAvailability={onAvailability}
+                  />
+                ))}
+              </div>
+
+              <div className="dashboard-list">
+                <div className="dashboard-list-header">
+                  <strong>Recent bookings</strong>
+                  <span>{adminBookings.length} bookings</span>
+                </div>
+                {adminBookings.length ? (
+                  adminBookings.map((booking) => (
+                    <div
+                      className="dashboard-row customer-booking-row"
+                      key={booking._id || booking.bookingId}
+                    >
+                      <div className="customer-booking-details">
+                        <strong>{booking.userId?.name || "User"}</strong>
+                        <small>
+                          {booking.userId?.email || "Email unavailable"}
+                        </small>
+                        {booking.userId?.phone && (
+                          <a
+                            className="booking-contact"
+                            href={`tel:${booking.userId.phone}`}
+                          >
+                            <Phone size={12} /> {booking.userId.phone}
+                          </a>
+                        )}
+                        <small>{booking.bookingId || "Reservation"}</small>
+                        <span
+                          className={`status-pill ${getBookingStatusClass(booking.bookingStatus)}`}
+                        >
+                          {booking.bookingStatus}
+                        </span>
+                      </div>
+                      <div className="customer-booking-meta">
+                        <span>
+                          {booking.parkingId?.name || "Parking reservation"}
+                        </span>
+                        <span>
+                          {booking.vehicleType} ·{" "}
+                          {booking.vehicleNumber || "N/A"}
+                        </span>
+                        <span>
+                          {formatBookingDateTime(booking.startTime)} to{" "}
+                          {formatBookingDateTime(booking.endTime)}
+                        </span>
+                        <div className="booking-time-stack">
+                          {booking.checkedInAt && (
+                            <span className="time-tag">
+                              Check-in:{" "}
+                              {formatBookingDateTime(booking.checkedInAt)}
+                            </span>
+                          )}
+                          {booking.checkedOutAt && (
+                            <span className="time-tag">
+                              Check-out:{" "}
+                              {formatBookingDateTime(booking.checkedOutAt)}
+                            </span>
+                          )}
+                        </div>
+                        <strong>₹{booking.amount}</strong>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="dashboard-empty">No bookings yet.</p>
+                )}
+              </div>
+            </>
+          )}
         </>
       ) : (
         <>
@@ -1348,7 +1654,7 @@ function AccountDashboard({
           </div>
         </>
       )}
-      {isAdmin && (
+      {isSuperAdmin && (
         <div className="dashboard-list request-list">
           <div className="dashboard-list-header">
             <strong>Parking-owner requests</strong>
@@ -1472,6 +1778,7 @@ function AdminParkingForm({ lot, onClose, onSave }) {
   const [form, setForm] = useState({
     name: lot?.name || "",
     address: lot?.address || "",
+    contactPhone: lot?.contactPhone || "",
     latitude: lot?.latitude || "18.5204",
     longitude: lot?.longitude || "73.8567",
     bikeCapacity: lot?.bikeCapacity || 20,
@@ -1529,6 +1836,16 @@ function AdminParkingForm({ lot, onClose, onSave }) {
             required
             value={form.address}
             onChange={(event) => update("address", event.target.value)}
+          />
+        </label>
+        <label>
+          Parking contact phone
+          <input
+            required
+            type="tel"
+            value={form.contactPhone}
+            onChange={(event) => update("contactPhone", event.target.value)}
+            placeholder="Example: +91 9876543210"
           />
         </label>
         <div className="form-grid">
@@ -1602,9 +1919,8 @@ function AdminParkingForm({ lot, onClose, onSave }) {
 function PartnerRequestForm({ onClose, onSave }) {
   const [parkingName, setParkingName] = useState("");
   const [address, setAddress] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [message, setMessage] = useState("");
-  const [latitude, setLatitude] = useState("18.5204");
-  const [longitude, setLongitude] = useState("73.8567");
   const [bikeCapacity, setBikeCapacity] = useState(20);
   const [carCapacity, setCarCapacity] = useState(10);
   const [bikePricePerHour, setBikePricePerHour] = useState(15);
@@ -1619,9 +1935,8 @@ function PartnerRequestForm({ onClose, onSave }) {
       await onSave({
         parkingName,
         address,
+        contactPhone,
         message,
-        latitude,
-        longitude,
         bikeCapacity,
         carCapacity,
         bikePricePerHour,
@@ -1674,6 +1989,16 @@ function PartnerRequestForm({ onClose, onSave }) {
             placeholder="Street, area, city"
           />
         </label>
+        <label>
+          Parking contact phone
+          <input
+            required
+            type="tel"
+            value={contactPhone}
+            onChange={(event) => setContactPhone(event.target.value)}
+            placeholder="Example: +91 9876543210"
+          />
+        </label>
         <div className="form-grid">
           <label>
             Bike capacity
@@ -1715,27 +2040,10 @@ function PartnerRequestForm({ onClose, onSave }) {
               onChange={(event) => setCarPricePerHour(event.target.value)}
             />
           </label>
-          <label>
-            Latitude
-            <input
-              required
-              type="number"
-              step="any"
-              value={latitude}
-              onChange={(event) => setLatitude(event.target.value)}
-            />
-          </label>
-          <label>
-            Longitude
-            <input
-              required
-              type="number"
-              step="any"
-              value={longitude}
-              onChange={(event) => setLongitude(event.target.value)}
-            />
-          </label>
         </div>
+        <p className="location-hint">
+          We will use your address to place the parking location on the map.
+        </p>
         <label>
           Message{" "}
           <input

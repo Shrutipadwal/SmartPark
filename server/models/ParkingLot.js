@@ -10,6 +10,7 @@ const parkingLotSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
     address: { type: String, required: true, trim: true },
+    contactPhone: { type: String, default: "", trim: true },
     distance: { type: Number, default: 0, min: 0 },
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },

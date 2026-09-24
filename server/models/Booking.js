@@ -37,6 +37,7 @@ const bookingSchema = new mongoose.Schema(
       ],
       default: "PENDING",
     },
+    reminderSentAt: { type: Date, default: null },
     qrCodeData: { type: String, default: "" },
   },
   { timestamps: true },

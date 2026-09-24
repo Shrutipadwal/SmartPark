@@ -10,6 +10,7 @@ const parkingOwnerRequestSchema = new mongoose.Schema(
     },
     parkingName: { type: String, required: true, trim: true },
     address: { type: String, required: true, trim: true },
+    contactPhone: { type: String, default: "", trim: true },
     message: { type: String, default: "", trim: true },
     latitude: { type: Number, default: 18.5204 },
     longitude: { type: Number, default: 73.8567 },

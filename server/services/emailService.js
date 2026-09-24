@@ -53,6 +53,46 @@ export const sendBookingConfirmation = async (userEmail, bookingDetails) => {
   }
 };
 
+export const sendAdminBookingNotification = async (adminEmail, details) =>
+  sendCustomEmail(
+    adminEmail,
+    "New parking booking - SmartPark",
+    `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h1>New booking received</h1>
+      <p><strong>Booking ID:</strong> ${details.bookingId}</p>
+      <p><strong>Parking:</strong> ${details.parkingLotName}</p>
+      <p><strong>Customer:</strong> ${details.customerName}</p>
+      <p><strong>Customer email:</strong> ${details.customerEmail}</p>
+      <p><strong>Customer phone:</strong> ${details.customerPhone || "Not provided"}</p>
+      <p><strong>Vehicle:</strong> ${details.vehicleType} ${details.vehicleNumber || ""}</p>
+      <p><strong>Time:</strong> ${details.time}</p>
+      <p><strong>Amount:</strong> ₹${details.price}</p>
+    </div>`,
+  );
+
+export const sendBookingStatusEmail = async (userEmail, details) =>
+  sendCustomEmail(
+    userEmail,
+    `Booking ${details.status} - SmartPark`,
+    `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h1>Booking ${details.status}</h1>
+      <p>Your booking <strong>${details.bookingId}</strong> at <strong>${details.parkingLotName}</strong> is now ${details.status.toLowerCase()}.</p>
+      <p>Thank you for using SmartPark.</p>
+    </div>`,
+  );
+
+export const sendBookingReminderEmail = async (userEmail, details) =>
+  sendCustomEmail(
+    userEmail,
+    "Parking reminder - SmartPark",
+    `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h1 style="color: #2c3e50;">Your parking reservation is tomorrow</h1>
+      <p>Your booking <strong>${details.bookingId}</strong> at <strong>${details.parkingLotName}</strong> starts on ${details.startTime}.</p>
+      <p>Allow enough time to reach the parking location and keep your booking QR code ready.</p>
+      <p style="color: #7f8c8d; font-size: 12px;">For support, contact us at support@smartpark.com</p>
+    </div>`,
+  );
+
 // Function to send booking cancellation
 export const sendCancellationEmail = async (userEmail, bookingDetails) => {
   const mailOptions = {

@@ -1,17 +1,64 @@
-import { useState } from "react";
-import { ArrowRight, QrCode } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Camera, QrCode, X } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
 
 export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
   const [qrInput, setQrInput] = useState("");
   const [scannedBooking, setScannedBooking] = useState(null);
   const [message, setMessage] = useState("");
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const scannerRef = useRef(null);
 
-  const handleScan = () => {
+  useEffect(
+    () => () => {
+      const scanner = scannerRef.current;
+      if (scanner?.isScanning) scanner.stop().catch(() => {});
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!cameraOpen) return undefined;
+
+    let cancelled = false;
+    const scanner = new Html5Qrcode("qr-reader");
+    scannerRef.current = scanner;
+
+    scanner
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 240, height: 240 } },
+        async (decodedText) => {
+          if (cancelled) return;
+          await stopCamera();
+          handleScan(decodedText);
+        },
+        () => {},
+      )
+      .catch((error) => {
+        if (cancelled) return;
+        stopCamera();
+        setMessage(
+          error?.name === "NotAllowedError"
+            ? "Camera permission was denied. Enter your Booking ID instead."
+            : "Camera could not start. Enter your Booking ID instead.",
+        );
+      });
+
+    return () => {
+      cancelled = true;
+      if (scannerRef.current === scanner) scannerRef.current = null;
+      if (scanner.isScanning) {
+        scanner.stop().catch(() => {});
+      }
+    };
+  }, [cameraOpen]);
+
+  const handleScan = (value = qrInput) => {
+    const scanValue = value.trim();
     const booking = bookings.find(
-      (b) =>
-        b.bookingId === qrInput.trim() ||
-        b.qrCodeData?.includes(qrInput.trim()),
+      (b) => b.bookingId === scanValue || b.qrCodeData?.includes(scanValue),
     );
 
     if (!booking) {
@@ -27,6 +74,24 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
     setScannedBooking(booking);
     setMessage("");
     setQrInput("");
+  };
+
+  const stopCamera = async () => {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    setCameraOpen(false);
+    if (!scanner) return;
+    try {
+      if (scanner.isScanning) await scanner.stop();
+      scanner.clear();
+    } catch {
+      // The camera may already be closed by the browser.
+    }
+  };
+
+  const startCamera = () => {
+    setMessage("");
+    setCameraOpen(true);
   };
 
   const handleCheckInAction = async () => {
@@ -77,6 +142,7 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
 
         {!scannedBooking ? (
           <div className="checkin-form">
+            {cameraOpen && <div id="qr-reader" className="qr-reader" />}
             <div className="qr-input-group">
               <input
                 type="text"
@@ -95,6 +161,15 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
                 Scan <ArrowRight size={17} />
               </button>
             </div>
+            {!cameraOpen ? (
+              <button className="camera-button" onClick={startCamera}>
+                <Camera size={17} /> Scan with camera
+              </button>
+            ) : (
+              <button className="camera-button" onClick={stopCamera}>
+                <X size={17} /> Close camera
+              </button>
+            )}
 
             {message && (
               <p
@@ -210,17 +285,18 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #edf8f1 0%, #f6faf7 100%);
           padding: 20px;
         }
 
         .checkin-container {
           width: 100%;
           max-width: 500px;
-          background: white;
+          background: #ffffff;
+          border: 1px solid var(--line, #dfe4de);
           border-radius: 16px;
           padding: 40px 24px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 20px 50px rgba(35, 107, 84, 0.12);
         }
 
         .checkin-header {
@@ -234,15 +310,15 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
           justify-content: center;
           width: 64px;
           height: 64px;
-          background: #f0f4ff;
+          background: var(--mint, #dff1e8);
           border-radius: 12px;
-          color: #667eea;
+          color: var(--green, #236b54);
           margin-bottom: 16px;
         }
 
         .checkin-header .eyebrow {
-          color: #667eea;
-          font-weight: 600;
+          color: var(--green, #236b54);
+          font-weight: 700;
           font-size: 12px;
           text-transform: uppercase;
           letter-spacing: 1px;
@@ -251,12 +327,12 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
 
         .checkin-header h2 {
           font-size: 28px;
-          color: #111;
+          color: var(--ink, #18211f);
           margin-bottom: 8px;
         }
 
         .checkin-description {
-          color: #666;
+          color: var(--muted, #68726e);
           font-size: 14px;
           line-height: 1.5;
         }
@@ -272,33 +348,65 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
           gap: 8px;
         }
 
+        .qr-reader {
+          width: 100%;
+          overflow: hidden;
+          border: 2px solid var(--line, #dfe4de);
+          border-radius: 10px;
+          background: #111;
+        }
+
+        .camera-button {
+          width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 11px 14px;
+          border: 1px solid var(--green, #236b54);
+          border-radius: 8px;
+          background: #fff;
+          color: var(--green, #236b54);
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .camera-button:hover {
+          background: var(--mint, #dff1e8);
+        }
+
         .qr-input {
           flex: 1;
           padding: 12px 16px;
-          border: 2px solid #ddd;
+          border: 2px solid var(--line, #dfe4de);
           border-radius: 8px;
           font-size: 16px;
           font-family: monospace;
-          transition: border-color 0.2s;
+          transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
+          color: var(--ink, #18211f);
+          background: #fff;
         }
 
         .qr-input:focus {
           outline: none;
-          border-color: #667eea;
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+          border-color: var(--green, #236b54);
+          box-shadow: 0 0 0 3px rgba(35, 107, 84, 0.1);
         }
 
         .checkin-tips {
-          background: #f8f9ff;
+          background: var(--mint, #dff1e8);
           border-radius: 8px;
           padding: 16px;
-          border-left: 4px solid #667eea;
+          border-left: 4px solid var(--green, #236b54);
         }
 
         .checkin-tips h3 {
           font-size: 14px;
           font-weight: 600;
-          color: #111;
+          color: var(--ink, #18211f);
           margin-bottom: 8px;
         }
 
@@ -307,7 +415,7 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
           padding: 0;
           margin: 0;
           font-size: 13px;
-          color: #666;
+          color: var(--muted, #68726e);
           line-height: 1.6;
         }
 
@@ -327,15 +435,15 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
         .booking-card {
           width: 100%;
           padding: 24px;
-          background: #f8f9ff;
+          background: #f8faf8;
           border-radius: 12px;
-          border: 2px solid #e0e4ff;
+          border: 1px solid var(--line, #dfe4de);
         }
 
         .booking-status-badge {
           display: inline-block;
-          background: #667eea;
-          color: white;
+          background: var(--green, #236b54);
+          color: #fff;
           padding: 6px 12px;
           border-radius: 4px;
           font-size: 12px;
@@ -345,7 +453,7 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
 
         .booking-card h3 {
           font-size: 18px;
-          color: #111;
+          color: var(--ink, #18211f);
           margin-bottom: 16px;
           font-family: monospace;
           word-break: break-all;
@@ -357,7 +465,7 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
           gap: 8px;
           margin-bottom: 16px;
           font-size: 14px;
-          color: #555;
+          color: var(--muted, #68726e);
         }
 
         .booking-details p {
@@ -365,7 +473,7 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
         }
 
         .booking-details strong {
-          color: #333;
+          color: var(--ink, #18211f);
         }
 
         .checkin-actions {
@@ -375,11 +483,11 @@ export default function CheckInPage({ bookings, onCheckIn, onCheckOut }) {
         }
 
         .checkout-button {
-          background-color: #48bb78;
+          background-color: var(--green, #236b54);
         }
 
         .checkout-button:hover {
-          background-color: #38a169;
+          background-color: #1a5845;
         }
 
         @media (max-width: 480px) {

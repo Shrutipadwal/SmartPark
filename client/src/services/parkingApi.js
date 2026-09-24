@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5002/api",
   timeout: 2500,
 });
 
@@ -16,13 +16,14 @@ export async function createBooking({
   parkingId,
   vehicleType,
   vehicleNumber,
+  phone,
   startTime,
   durationHours,
   token,
 }) {
   const response = await api.post(
     "/bookings",
-    { parkingId, vehicleType, vehicleNumber, startTime, durationHours },
+    { parkingId, vehicleType, vehicleNumber, phone, startTime, durationHours },
     { headers: { Authorization: `Bearer ${token}` } },
   );
   return response.data.data;
