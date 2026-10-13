@@ -1,265 +1,130 @@
-﻿# 🚗 SmartPark
+# SmartPark
 
-SmartPark is a full-stack parking discovery and reservation platform designed to help drivers find reliable parking faster, reserve a space in advance, and manage their booking experience without stress.
+SmartPark is a parking booking platform that helps drivers find and reserve parking easily, while giving parking owners and admins a way to manage lots, availability, and bookings.
 
-The platform brings together three key groups:
+The app has 3 main roles:
 
-- Drivers looking for nearby parking
-- Parking owners who want to list and manage spaces; admins who monitor parking availability and bookings
+- Driver / User: search for a parking space, choose vehicle type, select date and time, book the slot, pay, and get a QR code for check-in/check-out.
+- Parking Owner / Partner: fill out a request form with parking details and apply to become a partner.
+- Super Admin: reviews partner requests and approves or rejects them.
 
-The goal is simple: reduce the time spent circling for parking and make the entire parking experience more predictable, faster, and easier to manage.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Why SmartPark Exists](#why-smartpark-exists)
-- [Core Features](#core-features)
-- [How It Works](#how-it-works)
-- [User Journey](#user-journey)
-- [Admin Workflow](#admin-workflow)
-- [Partner Workflow](#partner-workflow)
-- [Booking and Confirmation Flow](#booking-and-confirmation-flow)
-- [Real-Time Updates](#real-time-updates)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Environment Variables](#environment-variables)
-- [Setup Instructions](#setup-instructions)
-- [Run the Project](#run-the-project)
-- [Security Notes](#security-notes)
+Once approved, the parking owner gets access to an admin dashboard where they can manage lot details, parking spaces, pricing, and availability.
 
 ---
 
-## Overview
+## What SmartPark does
 
-SmartPark helps users:
+### For users
 
-- discover nearby parking lots
-- compare availability and price
-- choose the right vehicle category
-- reserve a space by time and duration
-- complete a test payment flow
-- receive booking confirmation
-- check in with QR code or booking ID
-- check out when leaving
+A user can:
 
-It also helps parking owners and admin teams:
+- sign in with Google
+- search nearby parking lots
+- choose bike or car parking
+- view parking availability and price
+- select a date, time, and duration
+- make a booking
+- pay through a test payment flow
+- receive a booking confirmation
+- get a QR code or booking ID
+- check in and check out
 
-- add and manage parking lots
-- update prices and capacity
-- keep availability current
-- monitor bookings
-- review new owner requests
-- manage the overall parking operation from a dashboard
+### For parking owners
 
----
+A parking owner can:
 
-## Why SmartPark Exists
+- submit a partnership request
+- enter basic parking information such as name, address, contact number, capacity, pricing, and vehicle type details
+- wait for review from the super admin
+- after approval, manage parking availability and updates from the dashboard
 
-Finding parking in busy cities can be frustrating because users often:
+### For super admin
 
-- drive around looking for an open lot
-- arrive only to find the space is full
-- compare uncertain pricing manually
-- lose time during peak travel periods
-- struggle to remember booking details when they reach the site
+A super admin can:
 
-SmartPark solves this by giving users a single place to search, reserve, confirm, and manage parking.
+- review all parking owner requests
+- approve or reject the application
+- give the owner access to manage their parking space
 
 ---
 
-## Core Features
+## Main application flow
 
-### User Features
-
-- Google Sign-In using Firebase
-- Search parking lots by area or destination
-- View parking location details and price information
-- Choose bike or car parking categories
-- View parking availability before booking
-- Reserve a space for selected date and duration
-- Pay through a sandbox/test payment flow
-- Receive booking confirmation and QR data
-- View and manage personal bookings
-- Cancel eligible bookings
-- Check in and check out using QR or booking ID
-
-### Admin Features
-
-- Admin dashboard for overview metrics
-- Add, edit, and delete parking lots
-- Update capacity and pricing
-- Adjust current availability
-- View booking records and statuses
-- Receive new reservation notifications
-- Review requests from parking owners
-
-### Partner Features
-
-- Parking owners can request partnership access
-- Owners submit parking information for review
-- Admins can approve or reject partner requests
-- Approved partners manage their parking listings in the platform
-
----
-
-## How It Works
-
-SmartPark follows a simple customer flow:
+### Driver flow
 
 ```text
-User searches for parking
+Driver searches parking
         ↓
-User compares locations and availability
+Driver selects vehicle type, date, time, duration
         ↓
-User selects vehicle and duration
+Driver books the space
         ↓
-User reserves the lot
-        ↓
-Payment is verified
+Driver pays
         ↓
 Booking is confirmed
         ↓
-User checks in on arrival
+Driver receives QR code / booking ID
         ↓
-User checks out when leaving
+Driver checks in and checks out
 ```
 
-On the operational side:
+### Owner flow
 
 ```text
-Admin or owner updates parking information
+Owner fills partner form
         ↓
-Availability and pricing are stored
+Owner submits parking details
         ↓
-User views updated lot data
+Super admin reviews request
         ↓
-Booking is created against live availability
+Approved owner gets admin access
         ↓
-Check-in and check-out update the live state
+Owner updates parking details and availability
 ```
 
----
-
-## User Journey
+### Super admin flow
 
 ```text
-1. Sign in with Google
-2. Search for parking near the destination
-3. Compare availability, price, and distance
-4. Select a parking lot
-5. Choose vehicle type and booking duration
-6. Continue to payment
-7. Receive booking confirmation
-8. Use QR code or booking ID to check in
-9. Check out after leaving
+Super admin checks owner requests
+        ↓
+Approves or rejects request
+        ↓
+Only approved owners get dashboard access
 ```
-
-This flow is designed to reduce uncertainty and save user time before and during arrival.
 
 ---
 
-## Admin Workflow
-
-Admins can manage the platform from the dashboard:
+## Project structure
 
 ```text
-Admin signs in
-        ↓
-Dashboard loads booking and lot data
-        ↓
-Admin adds or edits parking lots
-        ↓
-Admin updates capacity and availability
-        ↓
-Admin monitors reservations and statuses
-        ↓
-Admin reviews partner requests
+SmartPark/
+├── client/            # Frontend React app
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.js
+├── server/            # Backend Express + MongoDB app
+│   ├── models/
+│   ├── middleware/
+│   ├── services/
+│   ├── server.js
+│   └── package.json
+├── README.md
+└── package.json
 ```
 
-This lets the admin team keep parking information accurate and maintain day-to-day operations.
-
 ---
 
-## Partner Workflow
-
-Parking owners can become partners in the system by applying through the partner flow:
-
-```text
-Owner clicks Partner with us
-        ↓
-Owner signs in if required
-        ↓
-Owner submits parking request details
-        ↓
-Admin reviews the request
-        ↓
-Admin approves or rejects the request
-        ↓
-Approved owner manages parking listings
-```
-
-This structure supports a scalable model where verified parking owners can list and manage spaces in the platform.
-
----
-
-## Booking and Confirmation Flow
-
-The booking process is one of the most important parts of the app:
-
-```text
-User selects a lot and time
-        ↓
-User fills in vehicle and contact details
-        ↓
-Booking request is created
-        ↓
-Payment order is generated
-        ↓
-Payment is verified
-        ↓
-Booking becomes confirmed
-        ↓
-QR code and booking ID are generated
-```
-
-Once confirmed, the user can:
-
-- view the booking
-- check in on arrival
-- retrieve a QR code
-- cancel eligible bookings
-- monitor the current booking status
-
----
-
-## Real-Time Updates
-
-SmartPark uses real-time communication to keep the platform responsive.
-
-This helps in scenarios such as:
-
-- a new booking arrives
-- admin availability is updated
-- a space is released after check-out
-- reservation events are pushed to the admin dashboard
-
-The real-time layer improves the user experience by reducing manual refreshes and keeping important live data current.
-
----
-
-## Technology Stack
+## Tech stack
 
 ### Frontend
 
 - React
 - Vite
 - React Router
-- Leaflet + React Leaflet
-- Lucide Icons
-- Firebase client SDK
-- Axios
+- Leaflet / Map UI
+- Firebase authentication
+- Razorpay checkout integration
+- QR code scanning and generation
 
 ### Backend
 
@@ -267,211 +132,109 @@ The real-time layer improves the user experience by reducing manual refreshes an
 - Express
 - MongoDB
 - Mongoose
-- Firebase Admin SDK
+- Firebase Admin
 - Socket.IO
-- Razorpay SDK
-- Nodemailer
-
-### Functionality Add-ons
-
-- Google authentication
-- QR code generation and scanning
-- payment verification flow
-- admin dashboard logic
-- role-based access handling
+- Email services: Brevo SMTP via Nodemailer
 
 ---
 
-## Project Structure
+## Email service
 
-```text
-SmartPark/
-├── client/
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── firebase/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   ├── BookingStyles.css
-│   │   └── main.jsx
-│   ├── package.json
-│   ├── vite.config.js
-│   └── .env
-│
-├── server/
-│   ├── config/
-│   ├── middleware/
-│   ├── models/
-│   ├── scripts/
-│   ├── services/
-│   ├── server.js
-│   ├── package.json
-│   └── .env
-│
-├── README.md
-├── .gitignore
-└── package.json
-```
+SmartPark uses Brevo SMTP to send booking-related emails such as:
+
+- booking confirmation
+- payment receipts
+- cancellation emails
+- reminder emails
+- owner/admin notifications
+
+This is configured in the backend with Nodemailer and the Brevo SMTP credentials.
 
 ---
 
-## Environment Variables
+## How the app is organized
 
-The project uses environment variables for sensitive configuration.
+This is a full-stack app with two major parts:
 
-### Client (.env)
+1. User booking system
+   - driver finds spaces
+   - reserves a slot
+   - pays and confirms booking
+   - checks in / checks out
 
-Example values:
+2. Parking owner management system
+   - owner applies to become a partner
+   - super admin reviews request
+   - approved owner manages parking data and availability
 
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-VITE_API_URL=http://localhost:5000/api
-```
-
-### Server (.env)
-
-Example values:
-
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/smartpark
-GOOGLE_CLIENT_EMAIL=your_service_account_email
-GOOGLE_PRIVATE_KEY=your_private_key
-RAZORPAY_KEY_ID=your_razorpay_key
-RAZORPAY_KEY_SECRET=your_razorpay_secret
-JWT_SECRET=your_jwt_secret
-EMAIL_USER=your_email
-EMAIL_PASS=your_email_password
-```
-
-> This project supports a local demo-friendly setup and also allows production-style config when credentials are provided.
+So in short, SmartPark is a parking reservation platform with a separate partner onboarding and admin approval flow.
 
 ---
 
-## Setup Instructions
+## Setup
 
-### 1. Clone the repo
-
-```bash
-git clone <repository-url>
-cd SmartPark
-```
-
-### 2. Install client dependencies
+### Install frontend dependencies
 
 ```bash
 cd client
 npm install
 ```
 
-### 3. Install server dependencies
+### Install backend dependencies
 
 ```bash
-cd ../server
+cd server
 npm install
 ```
 
-### 4. Configure environment files
+### Run frontend
 
-Create the necessary `.env` files in both the client and server folders using the examples above.
+```bash
+cd client
+npm run dev
+```
 
-### 5. Start the backend
+### Run backend
 
 ```bash
 cd server
 npm run dev
 ```
 
-### 6. Start the frontend
-
-```bash
-cd client
-npm run dev
-```
-
 ---
 
-## Run the Project
+## Screenshots
 
-### Frontend
+Add screenshots of the following here:
 
-```bash
-cd client
-npm run dev
+- Driver search and parking listing page
+- Booking form with date, time, and vehicle selection
+- Payment / confirmation screen
+- QR code booking confirmation
+- Check-in / check-out page
+- Partner request form
+- Admin dashboard
+- Super admin approval screen
+
+Example placeholder:
+
+```md
+## Screenshot 1
+![Driver booking page](./screenshots/driver-booking.png)
+
+## Screenshot 2
+![Partner request form](./screenshots/partner-form.png)
 ```
-
-### Backend
-
-```bash
-cd server
-npm run dev
-```
-
-### Production build
-
-```bash
-cd client
-npm run build
-```
-
----
-
-## Security Notes
-
-SmartPark follows a basic security model for a real-world product:
-
-- Firebase authentication is used for login
-- protected API routes should validate the user session
-- admin-only actions should verify role permissions
-- payment and booking data should be validated on the server
-- secrets should never be committed to source control
-
----
-
-## What Makes SmartPark Valuable
-
-SmartPark is valuable because it makes parking easier for both drivers and operators.
-
-For drivers, it reduces wasted time and improves certainty before arrival.
-
-For parking managers, it brings structure to availability, booking, and operational flow.
-
-For admins, it simplifies monitoring and coordination across multiple parking operations.
-
-This makes the app useful not just as a demo, but as a real product concept for smart urban mobility and parking management.
-
----
-
-## Future Improvements
-
-Potential improvements for the next version include:
-
-- live map clustering for large parking areas
-- better price optimization logic
-- user push notifications
-- automatic booking expiry handling
-- advanced admin analytics
-- smarter demand forecasting
-- multi-lot search filters
-- mobile-first polish and app-style UX improvements
 
 ---
 
 ## Summary
 
-SmartPark is a practical parking reservation platform built to make parking easier, faster, and more transparent for users while giving owners and admins better control over their spaces.
+SmartPark is a simple and practical solution for managing parking more efficiently:
 
-It combines booking, payment, role-based access, QR-based entry, and operational management in one product flow.
+- drivers can book a space before they arrive
+- parking owners can apply and manage their lots
+- super admins control access and approval
+- the system reduces parking confusion and helps manage real-time availability
 
----
-
-Built for smarter parking, simpler arrival, and better space management.
+This project is built as a working MVP for a smart parking management system.
