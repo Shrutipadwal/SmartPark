@@ -1,6 +1,6 @@
 # SmartPark
 
-SmartPark is a parking booking platform that helps drivers find and reserve parking easily, while giving parking owners and admins a way to manage lots, availability, and bookings.
+SmartPark is a parking booking platform that helps drivers find and reserve parking easily, while giving parking owners manages lots, availability, and bookings.
 
 The app has 3 main roles:
 
