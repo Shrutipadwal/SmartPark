@@ -5,8 +5,7 @@ SmartPark is a full-stack parking discovery and reservation platform designed to
 The platform brings together three key groups:
 
 - Drivers looking for nearby parking
-- Parking owners who want to list and manage spaces
-- Admins who monitor parking availability and bookings
+- Parking owners who want to list and manage spaces; admins who monitor parking availability and bookings
 
 The goal is simple: reduce the time spent circling for parking and make the entire parking experience more predictable, faster, and easier to manage.
 
