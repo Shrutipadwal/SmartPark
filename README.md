@@ -216,6 +216,25 @@ Explore the main SmartPark screens and workflows:
 | Pay, view booking confirmation, and use the QR code | Monitor bookings and availability | |
 
 
+1. Home Page: Introduces the platform and helps users understand its core purpose: finding and booking parking spaces through a single application.
+<img width="1893" height="899" alt="Screenshot (482)" src="https://github.com/user-attachments/assets/c610b235-8986-4cb2-824c-39fad8e502e2" />
+
+2. Parking Discovery, Details & Availability: Helps users explore parking options, review relevant details, and identify suitable parking spaces before making a reservation.
+<img width="1865" height="903" alt="Screenshot (484)" src="https://github.com/user-attachments/assets/a394bd5b-f840-48b3-ac8e-ad8248364b4e" />
+
+3. Reservation & Payment: Demonstrates the booking journey, allowing users to proceed with a selected parking space and complete the payment process.
+<img width="1878" height="894" alt="Screenshot (514)" src="https://github.com/user-attachments/assets/a9769e27-de95-4e48-bc2a-4453070ca038" />
+<img width="1862" height="887" alt="Screenshot (515)" src="https://github.com/user-attachments/assets/3d48bb12-6281-4068-9c8b-d983fbdf15c9" />
+
+4. Booking Confirmation & QR: Provides users with booking details and a QR code intended to support the parking check-in process.
+<img width="1869" height="904" alt="Screenshot (511)" src="https://github.com/user-attachments/assets/72dd9b09-f08a-48a3-a056-94871c42cae3" />
+<img width="846" height="1212" alt="mail google com_mail_u_1__ik=31ca1fb866 view=pt search=all permthid=thread-f_1879019947199782194 simpl=msg-f_1879019947199782194" src="https://github.com/user-attachments/assets/1c95deaf-4059-44d3-b949-4e865458b4b1" />
+<img width="846" height="1859" alt="mail google com_mail_u_1__ik=31ca1fb866 view=pt search=all permthid=thread-f_1879019947416141867 simpl=msg-f_1879019947416141867" src="https://github.com/user-attachments/assets/f658aeed-3046-48ab-8dff-61511ca2eaee" />
+
+5. Check-In / Check-Out: Demonstrates how a reservation can be linked to the parking visit, helping manage entry and exit workflows.
+<img width="846" height="1332" alt="localhost_5173_checkin" src="https://github.com/user-attachments/assets/6e0072a2-1057-44bc-9166-1c797ea656ac" />
+
+
 ---
 
 ## Summary
