@@ -228,11 +228,13 @@ Explore the main SmartPark screens and workflows:
 
 4. Booking Confirmation & QR: Provides users with booking details and a QR code intended to support the parking check-in process.
 <img width="1869" height="904" alt="Screenshot (511)" src="https://github.com/user-attachments/assets/72dd9b09-f08a-48a3-a056-94871c42cae3" />
-<img width="846" height="1212" alt="mail google com_mail_u_1__ik=31ca1fb866 view=pt search=all permthid=thread-f_1879019947199782194 simpl=msg-f_1879019947199782194" src="https://github.com/user-attachments/assets/1c95deaf-4059-44d3-b949-4e865458b4b1" />
-<img width="846" height="1859" alt="mail google com_mail_u_1__ik=31ca1fb866 view=pt search=all permthid=thread-f_1879019947416141867 simpl=msg-f_1879019947416141867" src="https://github.com/user-attachments/assets/f658aeed-3046-48ab-8dff-61511ca2eaee" />
+<img width="1837" height="899" alt="Screenshot (513)" src="https://github.com/user-attachments/assets/1b530ee9-e27c-4d67-8f9d-a451d17322e6" />
+<img width="1617" height="579" alt="Screenshot (518)" src="https://github.com/user-attachments/assets/02572855-15fc-4055-a431-40ef7764fb7e" />
+
+
 
 5. Check-In / Check-Out: Demonstrates how a reservation can be linked to the parking visit, helping manage entry and exit workflows.
-<img width="846" height="1332" alt="localhost_5173_checkin" src="https://github.com/user-attachments/assets/6e0072a2-1057-44bc-9166-1c797ea656ac" />
+
 
 
 ---
