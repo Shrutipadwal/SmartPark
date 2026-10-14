@@ -159,6 +159,7 @@ function SmartParkApp() {
   );
   const [bookingStart, setBookingStart] = useState("10:00");
   const [bookingDuration, setBookingDuration] = useState(2);
+  const [customerName, setCustomerName] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [paymentBooking, setPaymentBooking] = useState(null);
@@ -276,6 +277,7 @@ function SmartParkApp() {
       const booking = await createBooking({
         parkingId: selectedLot.id,
         vehicleType: vehicle,
+        customerName,
         vehicleNumber,
         phone,
         startTime: `${bookingDate}T${bookingStart}:00`,
@@ -329,6 +331,7 @@ function SmartParkApp() {
     }
     setSelectedLot(lot);
     setBookingComplete(false);
+    setCustomerName(authUser?.displayName || profile?.name || "");
     setVehicleNumber("");
     setPhone("");
   }
@@ -360,11 +363,12 @@ function SmartParkApp() {
   async function handleSignIn() {
     setAuthMessage("");
     try {
-      await signInWithGoogle();
+      const signedInUser = await signInWithGoogle();
       if (pendingLot) {
         setSelectedLot(pendingLot);
         setPendingLot(null);
         setBookingComplete(false);
+        setCustomerName(signedInUser.displayName || profile?.name || "");
       }
       setLoginModalOpen(false);
     } catch (error) {
@@ -888,6 +892,18 @@ function SmartParkApp() {
                 </p>
                 <div className="booking-fields">
                   <label>
+                    Customer name
+                    <input
+                      required
+                      autoComplete="name"
+                      value={customerName}
+                      onChange={(event) =>
+                        setCustomerName(event.target.value)
+                      }
+                      placeholder="Enter your full name"
+                    />
+                  </label>
+                  <label>
                     Vehicle number
                     <input
                       value={vehicleNumber}
@@ -978,6 +994,7 @@ function SmartParkApp() {
                 <button
                   className="primary-button full-width"
                   onClick={confirmBooking}
+                  disabled={!customerName.trim() || !phone.trim()}
                 >
                   Continue to payment <ArrowRight size={17} />
                 </button>
@@ -1463,7 +1480,19 @@ function AccountDashboard({
       <div className="section-heading">
         <div>
           <p className="eyebrow">{isAdmin ? "Operations" : "Your account"}</p>
-          <h2>{isAdmin ? "Admin dashboard" : "My bookings"}</h2>
+          <h2>
+            {isSuperAdmin
+              ? "Super-admin dashboard"
+              : isAdmin
+                ? "Partner admin dashboard"
+                : "My bookings"}
+          </h2>
+          {isAdmin && !isSuperAdmin && (
+            <p className="dashboard-empty">
+              Manage your parking, update spaces and prices, and track customer
+              bookings.
+            </p>
+          )}
         </div>
         <span className="account-label">{profile?.email}</span>
       </div>
@@ -1542,7 +1571,7 @@ function AccountDashboard({
                 {message && <p className="dashboard-message">{message}</p>}
                 {adminParking.map((lot) => (
                   <AdminParkingRow
-                    key={lot.id}
+                    key={`${lot.id}-${lot.bikeCapacity}-${lot.carCapacity}-${lot.bikeAvailable}-${lot.carAvailable}`}
                     lot={lot}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -1563,7 +1592,9 @@ function AccountDashboard({
                       key={booking._id || booking.bookingId}
                     >
                       <div className="customer-booking-details">
-                        <strong>{booking.userId?.name || "User"}</strong>
+                        <strong>
+                          {booking.customerName || booking.userId?.name || "User"}
+                        </strong>
                         <small>
                           {booking.userId?.email || "Email unavailable"}
                         </small>
@@ -1665,37 +1696,85 @@ function AccountDashboard({
           </div>
           {ownerRequests.length ? (
             ownerRequests.map((item) => (
-              <div className="dashboard-row" key={item._id}>
-                <div>
-                  <strong>{item.parkingName}</strong>
-                  <small>
-                    {item.requesterId?.name || item.requesterId?.email}
-                  </small>
-                </div>
-                <span className="request-actions">
-                  <strong
+              <article className="owner-request-card" key={item._id}>
+                <div className="owner-request-heading">
+                  <div>
+                    <strong>{item.parkingName}</strong>
+                    <small>
+                      Submitted by{" "}
+                      {item.requesterId?.name || item.requesterId?.email}
+                    </small>
+                  </div>
+                  <span
                     className={`request-status ${item.status.toLowerCase()}`}
                   >
                     {item.status}
-                  </strong>
-                  {item.status === "PENDING" && (
-                    <>
-                      <button
-                        className="small-action"
-                        onClick={() => onDecision(item, "APPROVED")}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="small-action danger-action"
-                        onClick={() => onDecision(item, "REJECTED")}
-                      >
-                        Reject
-                      </button>
-                    </>
+                  </span>
+                </div>
+                <div className="owner-request-details">
+                  <div>
+                    <span>Owner email</span>
+                    <strong>{item.requesterId?.email || "Not provided"}</strong>
+                  </div>
+                  <div>
+                    <span>Parking address</span>
+                    <strong>{item.address || "Not provided"}</strong>
+                  </div>
+                  <div>
+                    <span>Contact phone</span>
+                    <strong>{item.contactPhone || "Not provided"}</strong>
+                  </div>
+                  <div>
+                    <span>Bike spaces · price/hour</span>
+                    <strong>
+                      {item.bikeCapacity > 0
+                        ? `${item.bikeCapacity} · ₹${item.bikePricePerHour}`
+                        : "Not accepted"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Car spaces · price/hour</span>
+                    <strong>
+                      {item.carCapacity > 0
+                        ? `${item.carCapacity} · ₹${item.carPricePerHour}`
+                        : "Not accepted"}
+                    </strong>
+                  </div>
+                  {item.message && (
+                    <div className="owner-request-message">
+                      <span>Owner message</span>
+                      <strong>{item.message}</strong>
+                    </div>
                   )}
-                </span>
-              </div>
+                  {Number.isFinite(item.latitude) &&
+                    Number.isFinite(item.longitude) && (
+                      <a
+                        className="owner-request-map"
+                        href={`https://www.google.com/maps?q=${item.latitude},${item.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View submitted location on map
+                      </a>
+                    )}
+                </div>
+                {item.status === "PENDING" && (
+                  <div className="request-actions">
+                    <button
+                      className="small-action"
+                      onClick={() => onDecision(item, "APPROVED")}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="small-action danger-action"
+                      onClick={() => onDecision(item, "REJECTED")}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </article>
             ))
           ) : (
             <p className="dashboard-empty">No owner requests yet.</p>
@@ -1716,28 +1795,32 @@ function AdminParkingRow({ lot, onEdit, onDelete, onAvailability }) {
         <span>{lot.address}</span>
       </div>
       <div className="availability-controls">
-        <label>
-          Bike{" "}
-          <input
-            type="number"
-            min="0"
-            max={lot.bikeCapacity}
-            value={bikeAvailable}
-            onChange={(event) => setBikeAvailable(event.target.value)}
-          />{" "}
-          / {lot.bikeCapacity}
-        </label>
-        <label>
-          Car{" "}
-          <input
-            type="number"
-            min="0"
-            max={lot.carCapacity}
-            value={carAvailable}
-            onChange={(event) => setCarAvailable(event.target.value)}
-          />{" "}
-          / {lot.carCapacity}
-        </label>
+        {lot.bikeCapacity > 0 && (
+          <label>
+            Bike{" "}
+            <input
+              type="number"
+              min="0"
+              max={lot.bikeCapacity}
+              value={bikeAvailable}
+              onChange={(event) => setBikeAvailable(event.target.value)}
+            />{" "}
+            / {lot.bikeCapacity}
+          </label>
+        )}
+        {lot.carCapacity > 0 && (
+          <label>
+            Car{" "}
+            <input
+              type="number"
+              min="0"
+              max={lot.carCapacity}
+              value={carAvailable}
+              onChange={(event) => setCarAvailable(event.target.value)}
+            />{" "}
+            / {lot.carCapacity}
+          </label>
+        )}
         <button
           className="small-action"
           onClick={() =>
@@ -1775,16 +1858,24 @@ function DashboardStat({ label, value }) {
 }
 
 function AdminParkingForm({ lot, onClose, onSave }) {
+  const [supportedVehicles, setSupportedVehicles] = useState(() =>
+    lot
+      ? [
+          ...(lot.bikeCapacity > 0 ? ["bike"] : []),
+          ...(lot.carCapacity > 0 ? ["car"] : []),
+        ]
+      : ["bike", "car"],
+  );
   const [form, setForm] = useState({
     name: lot?.name || "",
     address: lot?.address || "",
     contactPhone: lot?.contactPhone || "",
     latitude: lot?.latitude || "18.5204",
     longitude: lot?.longitude || "73.8567",
-    bikeCapacity: lot?.bikeCapacity || 20,
-    carCapacity: lot?.carCapacity || 10,
-    bikePricePerHour: lot?.bikePrice || 15,
-    carPricePerHour: lot?.carPrice || 50,
+    bikeCapacity: lot?.bikeCapacity ?? 20,
+    carCapacity: lot?.carCapacity ?? 10,
+    bikePricePerHour: lot?.bikePrice ?? 15,
+    carPricePerHour: lot?.carPrice ?? 50,
   });
   function update(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -1793,10 +1884,28 @@ function AdminParkingForm({ lot, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   async function submit(event) {
     event.preventDefault();
+    if (!supportedVehicles.length) {
+      setStatus("Select bikes, cars, or both.");
+      return;
+    }
     setSaving(true);
     setStatus("");
     try {
-      await onSave(form);
+      await onSave({
+        ...form,
+        bikeCapacity: supportedVehicles.includes("bike")
+          ? Number(form.bikeCapacity)
+          : 0,
+        carCapacity: supportedVehicles.includes("car")
+          ? Number(form.carCapacity)
+          : 0,
+        bikePricePerHour: supportedVehicles.includes("bike")
+          ? Number(form.bikePricePerHour)
+          : 0,
+        carPricePerHour: supportedVehicles.includes("car")
+          ? Number(form.carPricePerHour)
+          : 0,
+      });
       setStatus("Parking saved successfully.");
       window.setTimeout(onClose, 700);
     } catch (error) {
@@ -1848,8 +1957,30 @@ function AdminParkingForm({ lot, onClose, onSave }) {
             placeholder="Example: +91 9876543210"
           />
         </label>
+        <fieldset className="vehicle-type-options">
+          <legend>Vehicle types accepted</legend>
+          {[
+            ["bike", "Bikes"],
+            ["car", "Cars"],
+          ].map(([type, label]) => (
+            <label key={type} className="vehicle-type-option">
+              <input
+                type="checkbox"
+                checked={supportedVehicles.includes(type)}
+                onChange={(event) =>
+                  setSupportedVehicles((current) =>
+                    event.target.checked
+                      ? [...current, type]
+                      : current.filter((vehicleType) => vehicleType !== type),
+                  )
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
         <div className="form-grid">
-          <label>
+          {supportedVehicles.includes("bike") && <label>
             Bike capacity
             <input
               required
@@ -1858,8 +1989,8 @@ function AdminParkingForm({ lot, onClose, onSave }) {
               value={form.bikeCapacity}
               onChange={(event) => update("bikeCapacity", event.target.value)}
             />
-          </label>
-          <label>
+          </label>}
+          {supportedVehicles.includes("car") && <label>
             Car capacity
             <input
               required
@@ -1868,8 +1999,8 @@ function AdminParkingForm({ lot, onClose, onSave }) {
               value={form.carCapacity}
               onChange={(event) => update("carCapacity", event.target.value)}
             />
-          </label>
-          <label>
+          </label>}
+          {supportedVehicles.includes("bike") && <label>
             Bike price/hour
             <input
               required
@@ -1880,8 +2011,8 @@ function AdminParkingForm({ lot, onClose, onSave }) {
                 update("bikePricePerHour", event.target.value)
               }
             />
-          </label>
-          <label>
+          </label>}
+          {supportedVehicles.includes("car") && <label>
             Car price/hour
             <input
               required
@@ -1892,7 +2023,7 @@ function AdminParkingForm({ lot, onClose, onSave }) {
                 update("carPricePerHour", event.target.value)
               }
             />
-          </label>
+          </label>}
         </div>
         {status && (
           <p
@@ -1925,10 +2056,15 @@ function PartnerRequestForm({ onClose, onSave }) {
   const [carCapacity, setCarCapacity] = useState(10);
   const [bikePricePerHour, setBikePricePerHour] = useState(15);
   const [carPricePerHour, setCarPricePerHour] = useState(50);
+  const [supportedVehicles, setSupportedVehicles] = useState(["bike", "car"]);
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   async function submit(event) {
     event.preventDefault();
+    if (!supportedVehicles.length) {
+      setStatus("Select bikes, cars, or both.");
+      return;
+    }
     setSubmitting(true);
     setStatus("");
     try {
@@ -1937,10 +2073,16 @@ function PartnerRequestForm({ onClose, onSave }) {
         address,
         contactPhone,
         message,
-        bikeCapacity,
-        carCapacity,
-        bikePricePerHour,
-        carPricePerHour,
+        bikeCapacity: supportedVehicles.includes("bike")
+          ? bikeCapacity
+          : 0,
+        carCapacity: supportedVehicles.includes("car") ? carCapacity : 0,
+        bikePricePerHour: supportedVehicles.includes("bike")
+          ? bikePricePerHour
+          : 0,
+        carPricePerHour: supportedVehicles.includes("car")
+          ? carPricePerHour
+          : 0,
       });
       setStatus("Request submitted successfully. An admin will review it.");
       window.setTimeout(onClose, 900);
@@ -1999,8 +2141,30 @@ function PartnerRequestForm({ onClose, onSave }) {
             placeholder="Example: +91 9876543210"
           />
         </label>
+        <fieldset className="vehicle-type-options">
+          <legend>Vehicle types accepted</legend>
+          {[
+            ["bike", "Bikes"],
+            ["car", "Cars"],
+          ].map(([type, label]) => (
+            <label key={type} className="vehicle-type-option">
+              <input
+                type="checkbox"
+                checked={supportedVehicles.includes(type)}
+                onChange={(event) =>
+                  setSupportedVehicles((current) =>
+                    event.target.checked
+                      ? [...current, type]
+                      : current.filter((vehicleType) => vehicleType !== type),
+                  )
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
         <div className="form-grid">
-          <label>
+          {supportedVehicles.includes("bike") && <label>
             Bike capacity
             <input
               required
@@ -2009,8 +2173,8 @@ function PartnerRequestForm({ onClose, onSave }) {
               value={bikeCapacity}
               onChange={(event) => setBikeCapacity(event.target.value)}
             />
-          </label>
-          <label>
+          </label>}
+          {supportedVehicles.includes("car") && <label>
             Car capacity
             <input
               required
@@ -2019,8 +2183,8 @@ function PartnerRequestForm({ onClose, onSave }) {
               value={carCapacity}
               onChange={(event) => setCarCapacity(event.target.value)}
             />
-          </label>
-          <label>
+          </label>}
+          {supportedVehicles.includes("bike") && <label>
             Bike price/hour
             <input
               required
@@ -2029,8 +2193,8 @@ function PartnerRequestForm({ onClose, onSave }) {
               value={bikePricePerHour}
               onChange={(event) => setBikePricePerHour(event.target.value)}
             />
-          </label>
-          <label>
+          </label>}
+          {supportedVehicles.includes("car") && <label>
             Car price/hour
             <input
               required
@@ -2039,7 +2203,7 @@ function PartnerRequestForm({ onClose, onSave }) {
               value={carPricePerHour}
               onChange={(event) => setCarPricePerHour(event.target.value)}
             />
-          </label>
+          </label>}
         </div>
         <p className="location-hint">
           We will use your address to place the parking location on the map.

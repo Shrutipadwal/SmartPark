@@ -14,8 +14,8 @@ const parkingOwnerRequestSchema = new mongoose.Schema(
     message: { type: String, default: "", trim: true },
     latitude: { type: Number, default: 18.5204 },
     longitude: { type: Number, default: 73.8567 },
-    bikeCapacity: { type: Number, default: 20, min: 1 },
-    carCapacity: { type: Number, default: 10, min: 1 },
+    bikeCapacity: { type: Number, default: 20, min: 0 },
+    carCapacity: { type: Number, default: 10, min: 0 },
     bikePricePerHour: { type: Number, default: 15, min: 0 },
     carPricePerHour: { type: Number, default: 50, min: 0 },
     status: {

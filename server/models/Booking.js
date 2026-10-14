@@ -14,6 +14,8 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
     vehicleType: { type: String, enum: ["bike", "car"], required: true },
+    customerName: { type: String, default: "", trim: true },
+    customerPhone: { type: String, default: "", trim: true },
     vehicleNumber: { type: String, default: "", trim: true },
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },

@@ -24,12 +24,14 @@ const booking = await Booking.create({
 // Send confirmation email
 const user = await User.findById(req.user.id);
 await sendBookingConfirmation(user.email, {
-  bookingId: booking._id,
+  bookingId: booking.bookingId,
+  customerName: booking.customerName,
+  customerPhone: booking.customerPhone,
+  vehicleNumber: booking.vehicleNumber,
+  time: `${booking.startTime.toLocaleString()} - ${booking.endTime.toLocaleString()}`,
   parkingLotName: booking.parkingLotName,
-  date: booking.date,
-  time: `${booking.startTime} - ${booking.endTime}`,
-  duration: calculateDuration(booking.startTime, booking.endTime),
-  price: booking.totalPrice,
+  parkingAddress: booking.parkingAddress,
+  qrCodeData: booking.qrCodeData,
 });
 
 res.status(201).json({ success: true, booking });
@@ -173,12 +175,14 @@ router.post('/bookings', async (req, res) => {
 
     // Send confirmation email
     const emailResult = await sendBookingConfirmation(user.email, {
-      bookingId: booking._id,
+      bookingId: booking.bookingId,
+      customerName: booking.customerName,
+      customerPhone: booking.customerPhone,
+      vehicleNumber: booking.vehicleNumber,
+      time: `${booking.startTime.toLocaleString()} - ${booking.endTime.toLocaleString()}`,
       parkingLotName: 'Parking Lot Name', // Get from parking lot data
-      date: booking.date,
-      time: `${booking.startTime} - ${booking.endTime}`,
-      duration: '2 hours', // Calculate based on start/end time
-      price: booking.totalPrice,
+      parkingAddress: 'Parking lot address',
+      qrCodeData: booking.qrCodeData,
     });
 
     res.status(201).json({

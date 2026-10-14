@@ -35,8 +35,10 @@ A parking owner can:
 
 - submit a partnership request
 - enter basic parking information such as name, address, contact number, capacity, pricing, and vehicle type details
+- choose whether the lot accepts bikes, cars, or both
 - wait for review from the super admin
 - after approval, manage parking availability and updates from the dashboard
+- receive booking alerts by email for successful bookings across the platform
 
 ### For super admin
 
@@ -203,27 +205,22 @@ npm run dev
 
 ---
 
-## Screenshots
+## Product Preview
 
-Add screenshots of the following here:
+Explore the main SmartPark screens and workflows:
 
-- Driver search and parking listing page
-- Booking form with date, time, and vehicle selection
-- Payment / confirmation screen
-- QR code booking confirmation
-- Check-in / check-out page
-- Partner request form
-- Admin dashboard
-- Super admin approval screen
+| Driver experience | Parking partner experience | Super-admin experience |
+| --- | --- | --- |
+| Search and compare parking spaces | Apply to list a parking lot | Review partner applications |
+| Choose vehicle type and booking time | Manage parking capacity and pricing | Approve or reject applications |
+| Pay, view booking confirmation, and use the QR code | Monitor bookings and availability | |
 
-Example placeholder:
+Add screenshots to the `screenshots/` folder and link them here. For example:
 
 ```md
-## Screenshot 1
-![Driver booking page](./screenshots/driver-booking.png)
-
-## Screenshot 2
-![Partner request form](./screenshots/partner-form.png)
+![Driver parking search](./screenshots/driver-search.png)
+![Partner admin dashboard](./screenshots/partner-admin-dashboard.png)
+![Super-admin partner review](./screenshots/super-admin-review.png)
 ```
 
 ---

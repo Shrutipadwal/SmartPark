@@ -15,6 +15,7 @@ export async function fetchParking({ search, vehicle, sort }) {
 export async function createBooking({
   parkingId,
   vehicleType,
+  customerName,
   vehicleNumber,
   phone,
   startTime,
@@ -23,7 +24,15 @@ export async function createBooking({
 }) {
   const response = await api.post(
     "/bookings",
-    { parkingId, vehicleType, vehicleNumber, phone, startTime, durationHours },
+    {
+      parkingId,
+      vehicleType,
+      customerName,
+      vehicleNumber,
+      phone,
+      startTime,
+      durationHours,
+    },
     { headers: { Authorization: `Bearer ${token}` } },
   );
   return response.data.data;

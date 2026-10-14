@@ -23,10 +23,10 @@ import {
   sendPaymentReceipt,
   sendOwnerNotification,
   sendWelcomeEmail,
-  sendCustomEmail,
   sendAdminBookingNotification,
   sendBookingStatusEmail,
   sendBookingReminderEmail,
+  sendOwnerRequestDecisionEmail,
 } from "./services/emailService.js";
 
 const app = express();
@@ -82,6 +82,80 @@ async function confirmPaidBooking(orderId, paymentId) {
   return booking;
 }
 
+async function sendPaidBookingNotifications(booking, paymentId) {
+  const [user, parkingLot, admins] = await Promise.all([
+    User.findById(booking.userId).lean(),
+    ParkingLot.findById(booking.parkingId).lean(),
+    User.find({ role: "ADMIN" }).select("email").lean(),
+  ]);
+  if (!user?.email) {
+    console.error(
+      `Cannot send booking emails for ${booking.bookingId}: customer email is missing.`,
+    );
+    return;
+  }
+
+  const details = parkingLot
+    ? {
+        bookingId: booking.bookingId,
+        parkingLotName: parkingLot.name,
+        parkingAddress: parkingLot.address,
+        time: `${booking.startTime.toLocaleString()} - ${booking.endTime.toLocaleString()}`,
+        price: booking.amount,
+        customerName: booking.customerName || user.name || "Customer",
+        customerEmail: user.email,
+        customerPhone: booking.customerPhone || user.phone || "",
+        vehicleType: booking.vehicleType,
+        vehicleNumber: booking.vehicleNumber,
+        qrCodeData: booking.qrCodeData,
+      }
+    : null;
+
+  if (!details) {
+    console.error(
+      `Cannot send booking confirmation for ${booking.bookingId}: parking lot was not found.`,
+    );
+  }
+
+  const tasks = [
+    sendPaymentReceipt(user.email, {
+      transactionId: paymentId,
+      amount: booking.amount,
+      date: new Date().toLocaleDateString(),
+      bookingId: booking.bookingId,
+    }),
+  ];
+
+  if (details) {
+    tasks.push(sendBookingConfirmation(user.email, details));
+    const adminEmails = [
+      ...new Set(admins.map((admin) => admin.email?.trim()).filter(Boolean)),
+    ];
+    if (adminEmails.length === 0) {
+      console.error(
+        `Cannot send admin booking alert for ${booking.bookingId}: no normal admin email addresses are configured.`,
+      );
+    } else {
+      tasks.push(
+        ...adminEmails.map((email) =>
+          sendAdminBookingNotification(email, details),
+        ),
+      );
+    }
+  }
+
+  await Promise.all(
+    tasks.map((task) =>
+      task.catch((error) =>
+        console.error(
+          `Unable to send payment notification for ${booking.bookingId}:`,
+          error.message,
+        ),
+      ),
+    ),
+  );
+}
+
 // Webhooks need the original request bytes for HMAC verification.
 app.post(
   "/api/payments/webhook",
@@ -110,10 +184,21 @@ app.post(
       if (event.event === "payment.captured" || event.event === "order.paid") {
         const payment = event.payload?.payment?.entity;
         const order = event.payload?.order?.entity;
-        await confirmPaidBooking(
+        const booking = await confirmPaidBooking(
           payment?.order_id || order?.id,
           payment?.id || "webhook",
         );
+        if (booking) {
+          sendPaidBookingNotifications(
+            booking,
+            payment?.id || "webhook",
+          ).catch((error) =>
+            console.error(
+              `Unable to send payment notifications for ${booking.bookingId}:`,
+              error.message,
+            ),
+          );
+        }
       }
       return response.json({ received: true });
     } catch {
@@ -445,55 +530,25 @@ app.post(
       return response
         .status(404)
         .json({ message: "Payment booking not found." });
-    const booking = await confirmPaidBooking(orderId, paymentId);
+    const newlyConfirmedBooking = await confirmPaidBooking(orderId, paymentId);
+    const booking =
+      newlyConfirmedBooking ||
+      (await Booking.findOne({
+        razorpayOrderId: orderId,
+        userId: request.dbUser._id,
+        bookingStatus: "CONFIRMED",
+        paymentStatus: "PAID",
+      }));
     if (!booking)
       return response
         .status(409)
         .json({ message: "This booking is no longer awaiting payment." });
 
-    const user = await User.findById(request.dbUser._id).lean();
-    const parkingLot = await ParkingLot.findById(booking.parkingId).lean();
-    const owner = parkingLot
-      ? await User.findById(parkingLot.ownerId).lean()
-      : null;
-    const details = parkingLot
-      ? {
-          bookingId: booking.bookingId,
-          parkingLotName: parkingLot.name,
-          time: `${booking.startTime.toLocaleString()} - ${booking.endTime.toLocaleString()}`,
-          price: booking.amount,
-          customerName: user?.name || "Customer",
-          customerEmail: user?.email || "Unavailable",
-          customerPhone: user?.phone || "",
-          vehicleType: booking.vehicleType,
-          vehicleNumber: booking.vehicleNumber,
-        }
-      : null;
-    if (user?.email) {
-      if (details) {
-        sendBookingConfirmation(user.email, {
-          ...details,
-          date: booking.startTime.toLocaleDateString(),
-          duration: `${Math.max(1, Math.round((booking.endTime - booking.startTime) / 3600000))} hours`,
-          qrCodeData: booking.qrCodeData,
-        }).catch((err) =>
-          console.error("❌ Error sending booking confirmation:", err.message),
-        );
-      }
-      sendPaymentReceipt(user.email, {
-        transactionId: paymentId,
-        amount: booking.amount,
-        date: new Date().toLocaleDateString(),
-        bookingId: booking.bookingId,
-      }).catch((err) =>
-        console.error("❌ Error sending payment receipt:", err.message),
-      );
-    }
-    if (owner?.email && details) {
-      sendAdminBookingNotification(owner.email, details).catch((err) =>
+    if (newlyConfirmedBooking) {
+      sendPaidBookingNotifications(booking, paymentId).catch((error) =>
         console.error(
-          "❌ Error sending admin booking notification:",
-          err.message,
+          `Unable to send payment notifications for ${booking.bookingId}:`,
+          error.message,
         ),
       );
     }
@@ -537,7 +592,8 @@ app.post(
     const capacities = [bikeCapacity, carCapacity].map(Number);
     const prices = [bikePricePerHour, carPricePerHour].map(Number);
     if (
-      capacities.some((value) => !Number.isInteger(value) || value < 1) ||
+      capacities.some((value) => !Number.isInteger(value) || value < 0) ||
+      !capacities.some((value) => value > 0) ||
       prices.some((value) => !Number.isFinite(value) || value < 0)
     )
       return response
@@ -562,8 +618,8 @@ app.post(
       longitude: Number(longitude),
       bikeCapacity: capacities[0],
       carCapacity: capacities[1],
-      bikePricePerHour: prices[0],
-      carPricePerHour: prices[1],
+      bikePricePerHour: capacities[0] > 0 ? prices[0] : 0,
+      carPricePerHour: capacities[1] > 0 ? prices[1] : 0,
       status: "PENDING",
     });
 
@@ -576,7 +632,10 @@ app.post(
         email: requester.email,
         phone: requester.phone || "N/A",
         location: address,
-        spacesAvailable: `Bike: ${capacities[0]}, Car: ${capacities[1]}`,
+        spacesAvailable: [
+          capacities[0] > 0 ? `Bikes: ${capacities[0]}` : "Bikes: not offered",
+          capacities[1] > 0 ? `Cars: ${capacities[1]}` : "Cars: not offered",
+        ].join(", "),
         message: message || "New parking owner request received",
       }).catch((err) =>
         console.error("❌ Error sending owner notification:", err.message),
@@ -673,8 +732,10 @@ app.patch(
         carCapacity: ownerRequest.carCapacity,
         bikeAvailable: ownerRequest.bikeCapacity,
         carAvailable: ownerRequest.carCapacity,
-        bikePricePerHour: ownerRequest.bikePricePerHour,
-        carPricePerHour: ownerRequest.carPricePerHour,
+        bikePricePerHour:
+          ownerRequest.bikeCapacity > 0 ? ownerRequest.bikePricePerHour : 0,
+        carPricePerHour:
+          ownerRequest.carCapacity > 0 ? ownerRequest.carPricePerHour : 0,
         parkingType: "PAID",
         openingTime: "08:00",
         closingTime: "22:00",
@@ -683,31 +744,11 @@ app.patch(
 
     const requester = await User.findById(ownerRequest.requesterId).lean();
     if (requester?.email) {
-      const subject =
-        decision === "APPROVED"
-          ? "🎉 Parking Owner Request Approved!"
-          : "❌ Parking Owner Request Rejected";
-      const html =
-        decision === "APPROVED"
-          ? `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #27ae60;">✅ Your Request Has Been Approved!</h1>
-            <p>Congratulations! Your parking owner request for <strong>${ownerRequest.parkingName}</strong> has been approved.</p>
-            <p>You now have access to the admin panel to manage your parking lot.</p>
-            <p style="color: #7f8c8d; font-size: 12px;">For support, contact us at support@smartpark.com</p>
-          </div>
-        `
-          : `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #e74c3c;">❌ Your Request Was Not Approved</h1>
-            <p>Your parking owner request for <strong>${ownerRequest.parkingName}</strong> has been rejected.</p>
-            <p>If you have questions, please contact our support team.</p>
-            <p style="color: #7f8c8d; font-size: 12px;">For support, contact us at support@smartpark.com</p>
-          </div>
-        `;
-
-      sendCustomEmail(requester.email, subject, html).catch((err) =>
-        console.error("Error sending owner decision email:", err),
+      sendOwnerRequestDecisionEmail(requester.email, {
+        parkingName: ownerRequest.parkingName,
+        status: decision,
+      }).catch((err) =>
+        console.error("Error sending owner decision email:", err.message),
       );
     }
 
@@ -838,12 +879,13 @@ app.post(
       !name ||
       !address ||
       !contactPhone.trim() ||
-      capacities.some((value) => !Number.isInteger(value) || value < 1) ||
+      capacities.some((value) => !Number.isInteger(value) || value < 0) ||
+      !capacities.some((value) => value > 0) ||
       prices.some((value) => !Number.isFinite(value) || value < 0)
     ) {
       return response.status(400).json({
         message:
-          "Name, address, contact phone, positive capacities, and valid prices are required.",
+          "Name, address, contact phone, at least one supported vehicle type, and valid capacities and prices are required.",
       });
     }
     const parking = await ParkingLot.create({
@@ -858,8 +900,8 @@ app.post(
       carCapacity: capacities[1],
       bikeAvailable: capacities[0],
       carAvailable: capacities[1],
-      bikePricePerHour: prices[0],
-      carPricePerHour: prices[1],
+      bikePricePerHour: capacities[0] > 0 ? prices[0] : 0,
+      carPricePerHour: capacities[1] > 0 ? prices[1] : 0,
       openingTime,
       closingTime,
       parkingType,
@@ -921,7 +963,7 @@ app.put(
       ) ||
       [updates.bikeCapacity, updates.carCapacity].some(
         (value) =>
-          value !== undefined && (!Number.isInteger(value) || value < 1),
+          value !== undefined && (!Number.isInteger(value) || value < 0),
       )
     ) {
       return response.status(400).json({
@@ -936,8 +978,37 @@ app.put(
       return response
         .status(404)
         .json({ message: "Owned parking lot not found." });
+    const nextCapacities = {
+      bike: updates.bikeCapacity ?? currentParking.bikeCapacity,
+      car: updates.carCapacity ?? currentParking.carCapacity,
+    };
+    if (nextCapacities.bike === 0 && nextCapacities.car === 0)
+      return response.status(400).json({
+        message: "At least one vehicle type must be supported.",
+      });
+    for (const vehicleType of ["bike", "car"]) {
+      const currentCapacity = currentParking[`${vehicleType}Capacity`];
+      const nextCapacity = nextCapacities[vehicleType];
+      if (nextCapacity === 0 && currentCapacity > 0) {
+        const activeBookings = await Booking.countDocuments({
+          parkingId: currentParking._id,
+          vehicleType,
+          bookingStatus: { $in: ["PENDING", "CONFIRMED", "CHECKED_IN"] },
+          endTime: { $gt: new Date() },
+        });
+        if (activeBookings > 0)
+          return response.status(409).json({
+            message: `Cannot stop accepting ${vehicleType}s while active bookings exist.`,
+          });
+        updates[`${vehicleType}Available`] = 0;
+        updates[`${vehicleType}PricePerHour`] = 0;
+      } else if (nextCapacity > 0 && currentCapacity === 0) {
+        updates[`${vehicleType}Available`] = nextCapacity;
+      }
+    }
     if (
       updates.bikeCapacity !== undefined &&
+      updates.bikeCapacity > 0 &&
       updates.bikeCapacity < currentParking.bikeAvailable
     )
       return response.status(400).json({
@@ -945,6 +1016,7 @@ app.put(
       });
     if (
       updates.carCapacity !== undefined &&
+      updates.carCapacity > 0 &&
       updates.carCapacity < currentParking.carAvailable
     )
       return response.status(400).json({
@@ -1039,6 +1111,7 @@ app.get("/api/parking", async (request, response) => {
   if (databaseEnabled) {
     const databaseResults = await ParkingLot.find({
       ownerId: { $exists: true, $ne: null },
+      [vehicle === "bike" ? "bikeCapacity" : "carCapacity"]: { $gt: 0 },
       $or: [
         { name: { $regex: searchTerm, $options: "i" } },
         { address: { $regex: searchTerm, $options: "i" } },
@@ -1084,12 +1157,18 @@ app.post("/api/bookings", requireFirebaseUser, async (request, response) => {
   const {
     parkingId,
     vehicleType = "car",
+    customerName = "",
     vehicleNumber = "",
     phone = "",
     startTime: requestedStartTime,
     durationHours = 2,
   } = request.body;
 
+  if (!String(customerName).trim()) {
+    return response
+      .status(400)
+      .json({ message: "A customer name is required." });
+  }
   if (!String(phone).trim()) {
     return response
       .status(400)
@@ -1158,6 +1237,8 @@ app.post("/api/bookings", requireFirebaseUser, async (request, response) => {
               userId: request.dbUser._id,
               parkingId: updatedLot._id,
               vehicleType,
+              customerName: String(customerName).trim(),
+              customerPhone: String(phone).trim(),
               vehicleNumber: String(vehicleNumber).trim(),
               startTime,
               endTime,
