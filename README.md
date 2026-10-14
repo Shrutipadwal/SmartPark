@@ -214,9 +214,7 @@ Explore the main SmartPark screens and workflows:
 | Search and compare parking spaces | Apply to list a parking lot | Review partner applications |
 | Choose vehicle type and booking time | Manage parking capacity and pricing | Approve or reject applications |
 | Pay, view booking confirmation, and use the QR code | Monitor bookings and availability | |
-1.Home page
-Introduces the platform and helps users understand its core purpose: finding and booking parking spaces through a single application.
-!Screenshot (482).png.png)
+
 
 ---
 
