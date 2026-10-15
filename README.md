@@ -1,8 +1,34 @@
 # SmartPark
 
-SmartPark is a parking booking platform that helps drivers find and reserve parking, while helping parking owners manage their lots, availability, and bookings.
+Finding parking can be frustrating: drivers may need to search multiple places, have little information about availability or prices, and still be unsure whether a space will be free when they arrive. Parking owners, meanwhile, need a straightforward way to list their spaces and keep parking details and bookings organized.
 
-The app has three main roles:
+SmartPark addresses these challenges with one platform for discovering and booking parking and managing parking lots. Drivers can compare available options, choose a vehicle type and booking time, pay through the configured Razorpay flow, and use a booking QR code for check-in and check-out. Parking owners can apply to join the platform and, once approved, manage their lot details, capacity, pricing, and availability from a dashboard. A super admin reviews partner applications before dashboard access is granted.
+
+The goal is to make it easier for drivers to plan where to park and to help parking owners manage their operations in one place.
+
+## Table of contents
+
+- [How SmartPark helps](#how-smartpark-helps)
+- [User roles](#user-roles)
+- [What SmartPark does](#what-smartpark-does)
+- [Main application flow](#main-application-flow)
+- [Project structure](#project-structure)
+- [Tech stack](#tech-stack)
+- [Email service](#email-service)
+- [How the app is organized](#how-the-app-is-organized)
+- [Getting started](#getting-started)
+- [Product preview and screenshots](#product-preview)
+- [Summary](#summary)
+
+## How SmartPark helps
+
+- **Drivers:** Find parking options, review availability and prices, and book ahead instead of searching without knowing what is available.
+- **Parking owners:** Apply to list a parking lot and manage its information and availability from a dedicated dashboard after approval.
+- **Super admins:** Review partner applications and control which owners receive dashboard access.
+
+SmartPark brings these steps together in a single parking booking and management application.
+
+## User roles
 
 - **Driver:** Search for a parking space, choose a vehicle type and booking time, make a reservation, and use the booking QR code for check-in and check-out.
 - **Parking owner / partner:** Submit a request with parking-lot details and, after approval, manage the lot through the dashboard.
@@ -184,20 +210,50 @@ So in short, SmartPark is a parking reservation platform with a separate partner
 
 ### Configure environment variables
 
-Create local environment files from the examples:
+Create local environment files by copying the examples:
 
 ```text
 client/.env.example → client/.env
 server/.env.example → server/.env
 ```
 
-Copy the files using your preferred file manager or shell. Set the values in each `.env` file:
+Replace the example values with your own credentials. These settings are important for the app's database, authentication, payments, and optional email features.
 
-- **Client:** Add your Firebase web-app configuration and set `VITE_API_URL=http://localhost:5000/api` for the local backend.
-- **Server:** Set `MONGODB_URI`, the Firebase Admin credentials, and `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`.
-- **Email (optional):** Set the `BREVO_SMTP_*` and `SENDER_EMAIL` values in `server/.env` to enable email delivery.
+#### Client variables (`client/.env`)
 
-The server template also includes optional settings for the port, allowed client origin, admin email, and Razorpay webhooks. Never commit `.env` files or put private keys and API secrets in the client environment; values prefixed with `VITE_` are exposed to the browser.
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_URL` | Yes for local development | Backend API URL. Use `http://localhost:5000/api` when running the backend locally. |
+| `VITE_FIREBASE_API_KEY` | Yes | Firebase web-app API key. |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Yes | Firebase project authentication domain. |
+| `VITE_FIREBASE_PROJECT_ID` | Yes | Firebase project ID. |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Yes | Firebase storage bucket. |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Yes | Firebase messaging sender ID. |
+| `VITE_FIREBASE_APP_ID` | Yes | Firebase web-app ID. |
+
+Get the Firebase web-app values from your Firebase project settings. Enable Google sign-in in Firebase Authentication.
+
+#### Server variables (`server/.env`)
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `MONGODB_URI` | Yes for database-backed features | MongoDB connection string for local MongoDB or MongoDB Atlas. |
+| `FIREBASE_PROJECT_ID` | Yes for authentication | Firebase project ID used by Firebase Admin. |
+| `FIREBASE_CLIENT_EMAIL` | Yes for authentication | Service-account client email from Firebase Admin credentials. |
+| `FIREBASE_PRIVATE_KEY` | Yes for authentication | Service-account private key. In `.env`, preserve line breaks as `\n` if your key is provided on one line. |
+| `RAZORPAY_KEY_ID` | Yes for payments | Razorpay key ID. Use test credentials for development. |
+| `RAZORPAY_KEY_SECRET` | Yes for payments | Secret paired with the Razorpay key ID. |
+| `PORT` | No | Backend port; defaults to `5000`. |
+| `CLIENT_ORIGIN` | No | Allowed frontend origin(s), comma-separated if there are multiple. Local Vite origins are allowed by default. |
+| `ADMIN_EMAIL` | Recommended | Email address that should receive super-admin privileges. Defaults to `admin@smartpark.com` if unset. |
+| `RAZORPAY_WEBHOOK_SECRET` | Only if using webhooks | Secret configured for Razorpay webhook signature verification. |
+| `BREVO_SMTP_HOST` | Only if enabling email | Brevo SMTP hostname, usually `smtp-relay.brevo.com`. |
+| `BREVO_SMTP_PORT` | Only if enabling email | Brevo SMTP port, usually `587`. |
+| `BREVO_SMTP_USER` | Only if enabling email | Brevo SMTP account username. |
+| `BREVO_SMTP_PASSWORD` | Only if enabling email | Brevo SMTP key/password. |
+| `SENDER_EMAIL` | Only if enabling email | Verified sender email address configured in Brevo. |
+
+For full functionality, configure MongoDB, all three Firebase Admin values, and the Razorpay key pair. Set all five Brevo variables together to use email notifications. Never commit `.env` files or place private keys, Razorpay secrets, or SMTP credentials in the client environment. All variables prefixed with `VITE_` are included in the browser build; only use them for Firebase web-app configuration and other public client settings.
 
 ### Install dependencies
 
