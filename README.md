@@ -1,3 +1,7 @@
+<img width="1875" height="894" alt="Screenshot (494)" src="https://github.com/user-attachments/assets/63016e6a-ddc9-4434-8af2-32c5ce010b2d" />
+<img width="1875" height="894" alt="Screenshot (494)" src="https://github.com/user-attachments/assets/0b4ceb42-3a01-4481-90bd-0eeebc2242b5" />
+<img width="1875" height="894" alt="Screenshot (494)" src="https://github.com/user-attachments/assets/c7ec7c7a-5d07-4353-8640-06d13cd9b231" />
+<img width="1875" height="894" alt="Screenshot (494)" src="https://github.com/user-attachments/assets/6ad6296c-7550-411d-ade7-6e4d483e110a" />
 # SmartPark
 
 SmartPark is a parking booking platform that helps drivers find and reserve parking easily, while giving parking owners manages lots, availability, and bookings.
@@ -234,7 +238,15 @@ Explore the main SmartPark screens and workflows:
 
 
 5. Check-In / Check-Out: Demonstrates how a reservation can be linked to the parking visit, helping manage entry and exit workflows.
+<img width="1875" height="894" alt="Screenshot (494)" src="https://github.com/user-attachments/assets/e581a334-e703-4781-909d-918e815f38bc" />
 
+6. Partner Admin Dashboard: Allows approved admins to add and manage parking locations, including relevant parking details, capacity, pricing, and availability. This enables them to maintain parking information and manage parking operations through a centralized dashboard
+<img width="1860" height="904" alt="Screenshot (519)" src="https://github.com/user-attachments/assets/ba698a38-411e-4ec5-a862-6a0737c7f7b4" />
+<img width="1882" height="731" alt="Screenshot (521)" src="https://github.com/user-attachments/assets/3aece890-1b85-4c50-a881-ac2004791790" />
+
+
+7. Super Admin: Allows reviewing requests from partner admins and approving or rejecting them. This creates a controlled access process and helps ensure that administrative privileges are granted only after approval.
+<img width="1875" height="900" alt="Screenshot (522)" src="https://github.com/user-attachments/assets/06810974-80a4-4233-8844-51a3f726ff32" />
 
 
 ---
