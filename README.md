@@ -299,37 +299,82 @@ Explore the main SmartPark screens and workflows:
 | Pay, view booking confirmation, and use the QR code | Monitor bookings and availability | Manage partner access |
 
 
-1. Home Page: Introduces the platform and helps users understand its core purpose: finding and booking parking spaces through a single application.
+<details>
+<summary><strong>1. Home Page</strong></summary>
+
+Introduces the platform and helps users understand its core purpose: finding and booking parking spaces through a single application.
+
 <img width="1893" height="899" alt="Screenshot (482)" src="https://github.com/user-attachments/assets/c610b235-8986-4cb2-824c-39fad8e502e2" />
 
-2. Parking Discovery, Details & Availability: Helps users explore parking options, review relevant details, and identify suitable parking spaces before making a reservation.
+</details>
+
+<details>
+<summary><strong>2. Parking Discovery, Details & Availability</strong></summary>
+
+Helps users explore parking options, review relevant details, and identify suitable parking spaces before making a reservation.
+
 <img width="1865" height="903" alt="Screenshot (484)" src="https://github.com/user-attachments/assets/a394bd5b-f840-48b3-ac8e-ad8248364b4e" />
 
-3. Reservation & Payment: Demonstrates the booking journey, allowing users to proceed with a selected parking space and complete the payment process.
+</details>
+
+<details>
+<summary><strong>3. Reservation & Payment</strong></summary>
+
+Demonstrates the booking journey, allowing users to proceed with a selected parking space and complete the payment process.
+
 <img width="1878" height="894" alt="Screenshot (514)" src="https://github.com/user-attachments/assets/a9769e27-de95-4e48-bc2a-4453070ca038" />
 <img width="1862" height="887" alt="Screenshot (515)" src="https://github.com/user-attachments/assets/3d48bb12-6281-4068-9c8b-d983fbdf15c9" />
 
-4. Booking Confirmation & QR: Provides users with booking details and a QR code intended to support the parking check-in process.
+</details>
+
+<details>
+<summary><strong>4. Booking Confirmation &amp; QR</strong></summary>
+
+Provides users with booking details and a QR code intended to support the parking check-in process.
+
 <img width="1869" height="904" alt="Screenshot (511)" src="https://github.com/user-attachments/assets/72dd9b09-f08a-48a3-a056-94871c42cae3" />
 <img width="1837" height="899" alt="Screenshot (513)" src="https://github.com/user-attachments/assets/1b530ee9-e27c-4d67-8f9d-a451d17322e6" />
 <img width="1617" height="579" alt="Screenshot (518)" src="https://github.com/user-attachments/assets/02572855-15fc-4055-a431-40ef7764fb7e" />
 
-5. My Bookings & Cancellation: Allows users to view their bookings and cancel a reservation before the scheduled booking time. This gives users flexibility to manage their parking reservations when their plans change.
+</details>
+
+<details>
+<summary><strong>5. My Bookings &amp; Cancellation</strong></summary>
+
+Allows users to view their bookings and cancel a reservation before the scheduled booking time. This gives users flexibility to manage their parking reservations when their plans change.
+
 <img width="1867" height="898" alt="Screenshot (512)" src="https://github.com/user-attachments/assets/5e3321c0-8aaa-4caf-93f6-8945eee8795d" />
 <img width="1482" height="629" alt="Screenshot (516)" src="https://github.com/user-attachments/assets/ee9b07ff-3b55-4540-a1fa-fdaa1c036155" />
 
+</details>
 
-6. Check-In / Check-Out: Demonstrates how a reservation can be linked to the parking visit, helping manage entry and exit workflows.
+<details>
+<summary><strong>6. Check-In / Check-Out</strong></summary>
+
+Demonstrates how a reservation can be linked to the parking visit, helping manage entry and exit workflows.
+
 <img width="1875" height="894" alt="Screenshot (494)" src="https://github.com/user-attachments/assets/e581a334-e703-4781-909d-918e815f38bc" />
 
-7. Partner Admin Dashboard: Allows approved admins to add and manage parking locations, including relevant parking details, capacity, pricing, and availability. This enables them to maintain parking information and manage parking operations through a centralized dashboard.
+</details>
+
+<details>
+<summary><strong>7. Partner Admin Dashboard</strong></summary>
+
+Allows approved admins to add and manage parking locations, including relevant parking details, capacity, pricing, and availability. This enables them to maintain parking information and manage parking operations through a centralized dashboard.
+
 <img width="1860" height="904" alt="Screenshot (519)" src="https://github.com/user-attachments/assets/d1592bd3-1d2b-49d5-ab9d-36f34b2004f3" />
 <img width="1882" height="731" alt="Screenshot (521)" src="https://github.com/user-attachments/assets/3aece890-1b85-4c50-a881-ac2004791790" />
 
+</details>
 
-8. Super Admin: Allows reviewing requests from partner admins and approving or rejecting them. This creates a controlled access process and helps ensure that administrative privileges are granted only after approval.
+<details>
+<summary><strong>8. Super Admin</strong></summary>
+
+Allows reviewing requests from partner admins and approving or rejecting them. This creates a controlled access process and helps ensure that administrative privileges are granted only after approval.
+
 <img width="1875" height="900" alt="Screenshot (522)" src="https://github.com/user-attachments/assets/92353f1a-78bc-47bb-b54f-798fef3dcf46" />
 
+</details>
 
 
 ---
