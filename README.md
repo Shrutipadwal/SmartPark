@@ -358,7 +358,22 @@ Demonstrates how a reservation can be linked to the parking visit, helping manag
 </details>
 
 <details>
-<summary><strong>7. Partner Admin Dashboard</strong></summary>
+<summary><strong>7. Partner With Us &amp; Parking Owner Registration</strong></summary>
+
+Turn your empty spaces into *opportunity.*
+
+Have a private lot, shopfront, or spare parking area? List it on SmartPark and help drivers find a reliable spot while you manage your space in one place.
+
+Parking owners can register their parking locations by filling out a partnership form with details such as parking name, address, contact information, capacity, pricing, and supported vehicle types. The submitted request is reviewed by the super admin. Once approved, the parking owner receives access to the Partner Admin Dashboard, where they can manage parking slots, update availability and pricing, and view bookings and user details.
+
+<img width="1848" height="879" alt="Screenshot (524)" src="https://github.com/user-attachments/assets/127209d4-fd04-48ab-8251-46f5c1db7a86" />
+
+<img width="1896" height="896" alt="Screenshot (525)" src="https://github.com/user-attachments/assets/aa1f2e5b-2f84-4895-a8f2-18c7c3acaea4" />
+
+</details>
+
+<details>
+<summary><strong>8. Partner Admin Dashboard</strong></summary>
 
 Allows approved admins to add and manage parking locations, including relevant parking details, capacity, pricing, and availability. This enables them to maintain parking information and manage parking operations through a centralized dashboard.
 
@@ -368,7 +383,7 @@ Allows approved admins to add and manage parking locations, including relevant p
 </details>
 
 <details>
-<summary><strong>8. Super Admin</strong></summary>
+<summary><strong>9. Super Admin</strong></summary>
 
 Allows reviewing requests from partner admins and approving or rejecting them. This creates a controlled access process and helps ensure that administrative privileges are granted only after approval.
 
