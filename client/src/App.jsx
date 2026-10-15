@@ -1979,6 +1979,10 @@ function AdminParkingForm({ lot, onClose, onSave }) {
             </label>
           ))}
         </fieldset>
+        <p className="vehicle-type-help">
+          Select Bikes, Cars, or both. Capacity and price fields are shown only
+          for the selected vehicle types.
+        </p>
         <div className="form-grid">
           {supportedVehicles.includes("bike") && <label>
             Bike capacity
@@ -2163,6 +2167,10 @@ function PartnerRequestForm({ onClose, onSave }) {
             </label>
           ))}
         </fieldset>
+        <p className="vehicle-type-help">
+          Select Bikes, Cars, or both. Capacity and price fields are shown only
+          for the selected vehicle types.
+        </p>
         <div className="form-grid">
           {supportedVehicles.includes("bike") && <label>
             Bike capacity
